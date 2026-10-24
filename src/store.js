@@ -302,6 +302,34 @@ class AppFlowyStore {
     return true;
   }
 
+  // Granular Deletion: Remove all blocks of a specific type (e.g. 'audio', 'image')
+  removeBlocksByType(pageId, type) {
+    const page = this.data.pages[pageId];
+    if (!page || page.isLocked || !Array.isArray(page.blocks)) return 0;
+    const initialLen = page.blocks.length;
+    page.blocks = page.blocks.filter(b => b.type !== type);
+    const removedCount = initialLen - page.blocks.length;
+    if (page.blocks.length === 0) {
+      page.blocks.push({ id: 'b-' + Math.random().toString(36).slice(2, 8), type: 'paragraph', text: '' });
+    }
+    page.updatedAt = Date.now();
+    this.notify();
+    return removedCount;
+  }
+
+  // Granular Deletion: Clear document body content while keeping document page
+  clearPageBlocks(pageId) {
+    const page = this.data.pages[pageId];
+    if (!page || page.isLocked) return false;
+    page.blocks = [
+      { id: 'b-' + Math.random().toString(36).slice(2, 8), type: 'heading', level: 1, text: page.title || 'Untitled' },
+      { id: 'b-' + Math.random().toString(36).slice(2, 8), type: 'paragraph', text: '' }
+    ];
+    page.updatedAt = Date.now();
+    this.notify();
+    return true;
+  }
+
   // Database Management
   initDatabaseForPage(pageId, title = 'Database') {
     if (!this.data.databases) this.data.databases = {};

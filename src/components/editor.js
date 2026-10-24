@@ -112,8 +112,20 @@ class BlockEditor {
         this.showBlockMenu(e, block, index);
       };
 
+      const delBtn = document.createElement('button');
+      delBtn.className = 'tool-btn del-btn';
+      delBtn.innerHTML = '✕';
+      const typeLabel = block.type === 'audio' ? 'voice memo' : (block.type === 'image' ? 'image' : 'block');
+      delBtn.title = `Delete this ${typeLabel}`;
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.store.removeBlock(this.pageId, block.id);
+        this.render();
+      };
+
       tools.appendChild(addBtn);
       tools.appendChild(handleBtn);
+      tools.appendChild(delBtn);
       row.appendChild(tools);
     }
 
@@ -336,21 +348,70 @@ class BlockEditor {
         const imgWrap = document.createElement('div');
         imgWrap.className = 'af-image-block';
         if (block.url) {
+          const imgContainer = document.createElement('div');
+          imgContainer.className = 'image-container-preview';
+
           const img = document.createElement('img');
           img.src = block.url;
           img.alt = block.alt || 'image';
-          imgWrap.appendChild(img);
+          imgContainer.appendChild(img);
+
+          if (!this.isReadOnly) {
+            const imgActions = document.createElement('div');
+            imgActions.className = 'image-overlay-actions';
+
+            const clearImgBtn = document.createElement('button');
+            clearImgBtn.className = 'btn-image-delete';
+            clearImgBtn.innerHTML = '🗑️ Remove Image';
+            clearImgBtn.title = 'Clear image attachment';
+            clearImgBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.store.updateBlock(this.pageId, block.id, { url: '' });
+              this.render();
+            };
+
+            const delImgBlockBtn = document.createElement('button');
+            delImgBlockBtn.className = 'btn-image-delete';
+            delImgBlockBtn.innerHTML = '✕ Delete Block';
+            delImgBlockBtn.title = 'Remove this image block';
+            delImgBlockBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.store.removeBlock(this.pageId, block.id);
+              this.render();
+            };
+
+            imgActions.appendChild(clearImgBtn);
+            imgActions.appendChild(delImgBlockBtn);
+            imgContainer.appendChild(imgActions);
+          }
+          imgWrap.appendChild(imgContainer);
         }
         if (!this.isReadOnly) {
+          const inputRow = document.createElement('div');
+          inputRow.className = 'image-input-row';
+
           const urlInput = document.createElement('input');
           urlInput.className = 'image-url-input';
-          urlInput.placeholder = 'Enter Image URL...';
+          urlInput.placeholder = 'Paste Image URL (or data URI)...';
           urlInput.value = block.url || '';
           urlInput.onchange = () => {
             this.store.updateBlock(this.pageId, block.id, { url: urlInput.value });
             this.render();
           };
-          imgWrap.appendChild(urlInput);
+          inputRow.appendChild(urlInput);
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn-image-delete';
+          delBtn.innerHTML = '✕ Delete Block';
+          delBtn.title = 'Remove image block';
+          delBtn.onclick = (e) => {
+            e.stopPropagation();
+            this.store.removeBlock(this.pageId, block.id);
+            this.render();
+          };
+          inputRow.appendChild(delBtn);
+
+          imgWrap.appendChild(inputRow);
         }
         content.appendChild(imgWrap);
         break;
@@ -497,6 +558,37 @@ class BlockEditor {
         const header = document.createElement('div');
         header.className = 'audio-header';
         header.innerHTML = `<span>🎙️ <strong>${block.title || 'Voice Memo'}</strong></span>`;
+
+        if (!this.isReadOnly) {
+          const headActions = document.createElement('div');
+          headActions.className = 'audio-head-actions';
+
+          if (block.src) {
+            const clearVoiceBtn = document.createElement('button');
+            clearVoiceBtn.className = 'btn-audio-delete';
+            clearVoiceBtn.innerHTML = '🗑️ Clear Voice';
+            clearVoiceBtn.title = 'Remove voice recording';
+            clearVoiceBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.store.updateBlock(this.pageId, block.id, { src: '', title: 'Voice Memo' });
+              this.render();
+            };
+            headActions.appendChild(clearVoiceBtn);
+          }
+
+          const delBlockBtn = document.createElement('button');
+          delBlockBtn.className = 'btn-audio-delete';
+          delBlockBtn.innerHTML = '✕ Delete Block';
+          delBlockBtn.title = 'Delete this voice memo block';
+          delBlockBtn.onclick = (e) => {
+            e.stopPropagation();
+            this.store.removeBlock(this.pageId, block.id);
+            this.render();
+          };
+          headActions.appendChild(delBlockBtn);
+
+          header.appendChild(headActions);
+        }
 
         const playerArea = document.createElement('div');
         playerArea.className = 'audio-player-area';
@@ -1039,13 +1131,29 @@ class BlockEditor {
         }
       },
       {
-        label: 'Delete',
+        label: block.type === 'audio' ? 'Delete Voice Memo' : (block.type === 'image' ? 'Delete Image' : 'Delete Block'),
         icon: '🗑️',
         action: () => {
           this.store.removeBlock(this.pageId, block.id);
           this.render();
         }
       },
+      ...(block.type === 'audio' && block.src ? [{
+        label: 'Clear Voice Recording',
+        icon: '🧹',
+        action: () => {
+          this.store.updateBlock(this.pageId, block.id, { src: '', title: 'Voice Memo' });
+          this.render();
+        }
+      }] : []),
+      ...(block.type === 'image' && block.url ? [{
+        label: 'Clear Image URL',
+        icon: '🧹',
+        action: () => {
+          this.store.updateBlock(this.pageId, block.id, { url: '' });
+          this.render();
+        }
+      }] : []),
       {
         label: 'Move Up',
         icon: '⬆️',

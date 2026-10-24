@@ -435,11 +435,19 @@ class AppShell {
     moreBtn.title = 'Page Style & Typography (Notion Options)';
     moreBtn.onclick = (e) => this.showPageOptionsMenu(e, page);
 
+    // Direct Delete & Cleanup Options Button
+    const trashBtn = document.createElement('button');
+    trashBtn.className = 'page-act-icon-btn btn-header-trash';
+    trashBtn.innerHTML = '🗑️';
+    trashBtn.title = 'Delete options (Voice, Image, Document)';
+    trashBtn.onclick = () => this.showMediaCleanupModal(page);
+
     actionGroup.appendChild(favBtn);
     actionGroup.appendChild(lockBtn);
     actionGroup.appendChild(exportBtn);
     actionGroup.appendChild(aiBtn);
     actionGroup.appendChild(moreBtn);
+    actionGroup.appendChild(trashBtn);
 
     metaRow.appendChild(iconBtn);
     metaRow.appendChild(titleInput);
@@ -752,6 +760,15 @@ class AppShell {
         <button class="menu-action-item" id="btn-menu-history">🕒 Page Version History</button>
         <button class="menu-action-item" id="btn-menu-enex">🐘 Export to Evernote (.enex)</button>
       </div>
+      <div class="notion-menu-divider"></div>
+      <div class="notion-menu-section delete-menu-section">
+        <div class="notion-section-title" style="color:#ef4444;">DELETE & CLEANUP OPTIONS</div>
+        <button class="menu-action-item text-danger" id="btn-menu-del-doc">🗑️ Delete Document (Move to Trash)</button>
+        <button class="menu-action-item" id="btn-menu-del-voice">🎙️ Remove Voice Memos (${(page.blocks || []).filter(b => b.type === 'audio').length})</button>
+        <button class="menu-action-item" id="btn-menu-del-images">🖼️ Remove Images (${(page.blocks || []).filter(b => b.type === 'image').length})</button>
+        <button class="menu-action-item" id="btn-menu-clear-doc">📄 Clear Document Content</button>
+        <button class="menu-action-item" id="btn-menu-cleanup-modal">🧹 Manage & Delete Media...</button>
+      </div>
     `;
 
     popup.querySelectorAll('.btn-font-switch').forEach(btn => {
@@ -796,6 +813,44 @@ class AppShell {
     popup.querySelector('#btn-menu-enex').onclick = () => {
       popup.remove();
       this.exportPageToENEX(page);
+    };
+
+    popup.querySelector('#btn-menu-del-doc').onclick = () => {
+      popup.remove();
+      if (confirm(`Move document "${page.title}" to Trash?`)) {
+        this.store.deletePage(page.id);
+        const next = Object.keys(this.store.data.pages).find(id => !this.store.data.pages[id].inTrash);
+        if (next) this.onPageSelect(next);
+        this.updateSidebar();
+        this.updateTabs();
+      }
+    };
+
+    popup.querySelector('#btn-menu-del-voice').onclick = () => {
+      popup.remove();
+      const removed = this.store.removeBlocksByType(page.id, 'audio');
+      this.onPageSelect(page.id);
+      alert(`Removed ${removed} voice memo(s) from "${page.title}".`);
+    };
+
+    popup.querySelector('#btn-menu-del-images').onclick = () => {
+      popup.remove();
+      const removed = this.store.removeBlocksByType(page.id, 'image');
+      this.onPageSelect(page.id);
+      alert(`Removed ${removed} image(s) from "${page.title}".`);
+    };
+
+    popup.querySelector('#btn-menu-clear-doc').onclick = () => {
+      popup.remove();
+      if (confirm(`Clear all block content inside "${page.title}"?`)) {
+        this.store.clearPageBlocks(page.id);
+        this.onPageSelect(page.id);
+      }
+    };
+
+    popup.querySelector('#btn-menu-cleanup-modal').onclick = () => {
+      popup.remove();
+      this.showMediaCleanupModal(page);
     };
 
     document.body.appendChild(popup);
@@ -1480,6 +1535,146 @@ class AppShell {
     nav.querySelector('#m-btn-scratch').onclick = () => this.showScratchpadModal();
     nav.querySelector('#m-btn-settings').onclick = () => {
       if (typeof SettingsModal !== 'undefined') new SettingsModal({ store: this.store }).show();
+    };
+  }
+
+  // Dedicated Selective Media & Content Cleanup Modal
+  showMediaCleanupModal(page) {
+    const existing = document.getElementById('af-media-cleanup-modal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    backdrop.id = 'af-media-cleanup-modal';
+
+    const box = document.createElement('div');
+    box.className = 'af-cleanup-modal-box';
+
+    const blocks = Array.isArray(page.blocks) ? page.blocks : [];
+    const voiceBlocks = blocks.filter(b => b.type === 'audio');
+    const imageBlocks = blocks.filter(b => b.type === 'image');
+
+    box.innerHTML = `
+      <div class="cleanup-modal-head">
+        <h2>🗑️ Delete Options: "${page.title}"</h2>
+        <button class="modal-close-btn">✕</button>
+      </div>
+      <div class="cleanup-modal-body">
+        <p class="cleanup-sub">Granularly remove voice memos, images, document content, or the entire document.</p>
+
+        <!-- 1. Voice Memos Section -->
+        <div class="cleanup-card">
+          <div class="cleanup-card-header">
+            <span class="cleanup-icon">🎙️</span>
+            <div>
+              <div class="cleanup-title">Voice Memos (${voiceBlocks.length})</div>
+              <div class="cleanup-desc">Audio tracks and recorded voice memos in this note.</div>
+            </div>
+            ${voiceBlocks.length > 0 ? `<button class="btn-cleanup-act danger" id="btn-del-all-voice">🗑️ Remove All Voice Memos</button>` : `<span class="badge-none">None</span>`}
+          </div>
+          ${voiceBlocks.length > 0 ? `
+            <div class="cleanup-items-list">
+              ${voiceBlocks.map((vb, idx) => `
+                <div class="cleanup-item-row" data-id="${vb.id}">
+                  <span>🎙️ ${vb.title || 'Voice Memo ' + (idx + 1)}</span>
+                  <button class="btn-del-item" data-id="${vb.id}">Delete</button>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 2. Images Section -->
+        <div class="cleanup-card">
+          <div class="cleanup-card-header">
+            <span class="cleanup-icon">🖼️</span>
+            <div>
+              <div class="cleanup-title">Images (${imageBlocks.length})</div>
+              <div class="cleanup-desc">Embedded pictures, diagrams, and visual cards.</div>
+            </div>
+            ${imageBlocks.length > 0 ? `<button class="btn-cleanup-act danger" id="btn-del-all-images">🗑️ Remove All Images</button>` : `<span class="badge-none">None</span>`}
+          </div>
+          ${imageBlocks.length > 0 ? `
+            <div class="cleanup-items-list">
+              ${imageBlocks.map((ib, idx) => `
+                <div class="cleanup-item-row" data-id="${ib.id}">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;">🖼️ ${ib.url || 'Image ' + (idx + 1)}</span>
+                  <button class="btn-del-item" data-id="${ib.id}">Delete</button>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 3. Document / Page Content Section -->
+        <div class="cleanup-card">
+          <div class="cleanup-card-header">
+            <span class="cleanup-icon">📄</span>
+            <div>
+              <div class="cleanup-title">Document & Page Deletion</div>
+              <div class="cleanup-desc">Clear document body text or move the whole document to Trash.</div>
+            </div>
+          </div>
+          <div class="cleanup-actions-group">
+            <button class="btn-cleanup-act" id="btn-act-clear-blocks">📄 Clear Document Content (${blocks.length} blocks)</button>
+            <button class="btn-cleanup-act danger" id="btn-act-delete-doc">🗑️ Move Document to Trash</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    box.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+
+    const delAllVoice = box.querySelector('#btn-del-all-voice');
+    if (delAllVoice) {
+      delAllVoice.onclick = () => {
+        this.store.removeBlocksByType(page.id, 'audio');
+        backdrop.remove();
+        this.onPageSelect(page.id);
+      };
+    }
+
+    const delAllImages = box.querySelector('#btn-del-all-images');
+    if (delAllImages) {
+      delAllImages.onclick = () => {
+        this.store.removeBlocksByType(page.id, 'image');
+        backdrop.remove();
+        this.onPageSelect(page.id);
+      };
+    }
+
+    box.querySelectorAll('.btn-del-item').forEach(btn => {
+      btn.onclick = () => {
+        this.store.removeBlock(page.id, btn.dataset.id);
+        backdrop.remove();
+        this.showMediaCleanupModal(this.store.getPage(page.id));
+        this.onPageSelect(page.id);
+      };
+    });
+
+    box.querySelector('#btn-act-clear-blocks').onclick = () => {
+      if (confirm(`Clear all block content inside "${page.title}"?`)) {
+        this.store.clearPageBlocks(page.id);
+        backdrop.remove();
+        this.onPageSelect(page.id);
+      }
+    };
+
+    box.querySelector('#btn-act-delete-doc').onclick = () => {
+      if (confirm(`Move document "${page.title}" to Trash?`)) {
+        this.store.deletePage(page.id);
+        backdrop.remove();
+        const next = Object.keys(this.store.data.pages).find(id => !this.store.data.pages[id].inTrash);
+        if (next) this.onPageSelect(next);
+        this.updateSidebar();
+        this.updateTabs();
+      }
+    };
+
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
     };
   }
 }

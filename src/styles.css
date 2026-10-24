@@ -2388,3 +2388,43 @@ body {
   }
 }
 
+/* 11. Granular Deletion & Media Cleanup Manager */
+.tool-btn.del-btn:hover { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.btn-header-trash:hover { color: #ef4444 !important; }
+.audio-head-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.btn-audio-delete, .btn-image-delete {
+  background: none; border: 1px solid rgba(239, 68, 68, 0.4); color: #ef4444;
+  border-radius: var(--radius-sm); padding: 2px 6px; font-size: 11px; cursor: pointer; transition: all 0.15s ease;
+}
+.btn-audio-delete:hover, .btn-image-delete:hover { background: rgba(239, 68, 68, 0.12); border-color: #ef4444; }
+.image-container-preview { position: relative; display: inline-block; max-width: 100%; }
+.image-overlay-actions { display: flex; gap: 6px; margin-top: 6px; }
+.image-input-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.af-cleanup-modal-box {
+  background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+  width: 620px; max-width: 90vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 45px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column;
+}
+.cleanup-modal-head { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
+.cleanup-modal-head h2 { font-size: 16px; margin: 0; color: var(--text-primary); }
+.cleanup-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.cleanup-sub { font-size: 12px; color: var(--text-muted); margin: 0; }
+.cleanup-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.cleanup-card-header { display: flex; align-items: center; gap: 12px; }
+.cleanup-icon { font-size: 22px; }
+.cleanup-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.cleanup-desc { font-size: 11px; color: var(--text-muted); }
+.cleanup-card-header button, .cleanup-card-header .badge-none { margin-left: auto; }
+.badge-none { font-size: 11px; color: var(--text-muted); background: var(--bg-tertiary); padding: 2px 8px; border-radius: 10px; }
+.cleanup-items-list { display: flex; flex-direction: column; gap: 6px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; }
+.cleanup-item-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 4px 6px; border-radius: var(--radius-sm); }
+.cleanup-item-row:hover { background: var(--bg-tertiary); }
+.btn-del-item { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+.btn-del-item:hover { background: rgba(239, 68, 68, 0.12); }
+.btn-cleanup-act { background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; font-weight: 500; cursor: pointer; }
+.btn-cleanup-act:hover { background: var(--bg-hover); }
+.btn-cleanup-act.danger { color: #ef4444; border-color: rgba(239, 68, 68, 0.4); }
+.btn-cleanup-act.danger:hover { background: rgba(239, 68, 68, 0.12); }
+.cleanup-actions-group { display: flex; gap: 10px; padding-top: 4px; }
+.text-danger { color: #ef4444 !important; }
+

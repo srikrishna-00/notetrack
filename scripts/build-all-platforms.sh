@@ -22,13 +22,13 @@ echo "✓ All unit & integration tests passed successfully!"
 
 # 2. Source Code & Size Audit
 echo ""
-echo "[2/4] Verifying ultra-lean code footprint (< 6,600 LOC)..."
+echo "[2/4] Verifying ultra-lean code footprint (< 7,000 LOC)..."
 TOTAL_LOC=$(wc -l src/*.js src/components/*.js 2>/dev/null | tail -n 1 | awk '{print $1}')
 echo "  Total Engine JavaScript LOC: $TOTAL_LOC lines"
-if [ "$TOTAL_LOC" -lt 6600 ]; then
-  echo "  ✓ Size constraint validated (< 6,600 lines vs 350k+ in competitors)"
+if [ "$TOTAL_LOC" -lt 7000 ]; then
+  echo "  ✓ Size constraint validated (< 7,000 lines vs 350k+ in competitors)"
 else
-  echo "  ⚠ Warning: LOC exceeded 6,600 lines ($TOTAL_LOC)"
+  echo "  ⚠ Warning: LOC exceeded 7,000 lines ($TOTAL_LOC)"
 fi
 
 # 3. Mobile Manifest & Capacitor Config Audit

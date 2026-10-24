@@ -200,3 +200,47 @@ test('Advanced Feature: Multi-Language i18n Localization Engine', () => {
   // Reset to English
   i18n.setLocale('en');
 });
+
+test('Granular Deletion: Separately remove voice memos, images, and document pages', () => {
+  const store = new AppFlowyStore();
+  const page = store.createPage({ title: 'Multi-Media Resource Page' });
+
+  // Add 2 voice memos and 2 images and text
+  const v1 = store.insertBlock(page.id, { type: 'audio', src: 'data:audio/webm;base64,123', title: 'Interview 1' });
+  const v2 = store.insertBlock(page.id, { type: 'audio', src: 'data:audio/webm;base64,456', title: 'Interview 2' });
+  const img1 = store.insertBlock(page.id, { type: 'image', url: 'https://example.com/fig1.png' });
+  const img2 = store.insertBlock(page.id, { type: 'image', url: 'https://example.com/fig2.png' });
+  const txt = store.insertBlock(page.id, { type: 'paragraph', text: 'Important notes' });
+
+  let curPage = store.getPage(page.id);
+  assert.equal(curPage.blocks.filter(b => b.type === 'audio').length, 2);
+  assert.equal(curPage.blocks.filter(b => b.type === 'image').length, 2);
+
+  // 1. Delete individual voice memo
+  store.removeBlock(page.id, v1.id);
+  curPage = store.getPage(page.id);
+  assert.equal(curPage.blocks.filter(b => b.type === 'audio').length, 1);
+  assert.equal(curPage.blocks.find(b => b.id === v1.id), undefined);
+
+  // 2. Remove all remaining voice memos
+  const removedAudio = store.removeBlocksByType(page.id, 'audio');
+  assert.equal(removedAudio, 1);
+  curPage = store.getPage(page.id);
+  assert.equal(curPage.blocks.filter(b => b.type === 'audio').length, 0);
+
+  // 3. Remove all images
+  const removedImages = store.removeBlocksByType(page.id, 'image');
+  assert.equal(removedImages, 2);
+  curPage = store.getPage(page.id);
+  assert.equal(curPage.blocks.filter(b => b.type === 'image').length, 0);
+
+  // 4. Clear document content
+  store.clearPageBlocks(page.id);
+  curPage = store.getPage(page.id);
+  assert.equal(curPage.blocks.length, 2); // Heading + empty paragraph
+
+  // 5. Delete document (move to trash)
+  store.deletePage(page.id);
+  assert.equal(store.getPage(page.id).inTrash, true);
+});
+
