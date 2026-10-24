@@ -17,6 +17,7 @@ class AppShell {
     this.openTabs = ['page-welcome', 'page-tasks'];
     this.collapsedNodes = new Set();
 
+    this.initShortcuts();
     this.store.subscribe(() => this.updateSidebar());
   }
 
@@ -161,7 +162,7 @@ class AppShell {
     pagesSection.appendChild(treeContainer);
     sidebar.appendChild(pagesSection);
 
-    // Bottom Tools: Trash & Add Page
+    // Bottom Tools: Trash, Templates & Add Page
     const bottomTools = document.createElement('div');
     bottomTools.className = 'sidebar-bottom-tools';
     bottomTools.innerHTML = `
@@ -169,10 +170,12 @@ class AppShell {
         <span>🗑️ Trash</span>
         ${trash.length > 0 ? `<span class="trash-badge">${trash.length}</span>` : ''}
       </button>
-      <button class="sb-tool-btn" id="sb-new-doc-btn">+ New Page</button>
+      <button class="sb-tool-btn" id="sb-templates-btn">📋 Templates</button>
+      <button class="sb-tool-btn" id="sb-new-doc-btn">+ New</button>
     `;
 
     bottomTools.querySelector('#sb-trash-btn').onclick = () => this.showTrashModal();
+    bottomTools.querySelector('#sb-templates-btn').onclick = () => this.showTemplatesModal();
     bottomTools.querySelector('#sb-new-doc-btn').onclick = () => {
       const p = this.store.createPage({ spaceId: this.activeSpaceId, title: 'Untitled' });
       this.onPageSelect(p.id);
@@ -398,16 +401,41 @@ class AppShell {
     aiBtn.title = 'Ask AI about this page';
     aiBtn.onclick = () => this.onOpenAI();
 
+    // Notion Feature: Page Options (⋯ Menu)
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'page-act-icon-btn';
+    moreBtn.innerHTML = '⋯';
+    moreBtn.title = 'Page Style & Typography (Notion Options)';
+    moreBtn.onclick = (e) => this.showPageOptionsMenu(e, page);
+
     actionGroup.appendChild(favBtn);
     actionGroup.appendChild(lockBtn);
     actionGroup.appendChild(exportBtn);
     actionGroup.appendChild(aiBtn);
+    actionGroup.appendChild(moreBtn);
 
     metaRow.appendChild(iconBtn);
     metaRow.appendChild(titleInput);
     metaRow.appendChild(actionGroup);
 
     headerWrap.appendChild(metaRow);
+
+    // Notion Feature: Incoming Backlinks Section
+    const backlinks = this.store.getBacklinks ? this.store.getBacklinks(page.id) : [];
+    if (backlinks.length > 0) {
+      const blWrap = document.createElement('div');
+      blWrap.className = 'af-backlinks-bar';
+      blWrap.innerHTML = `
+        <span class="bl-label">🔗 ${backlinks.length} Backlink${backlinks.length > 1 ? 's' : ''}:</span>
+        <div class="bl-chips-list">
+          ${backlinks.map(b => `<span class="bl-chip" data-id="${b.pageId}">${b.icon} ${b.title}</span>`).join('')}
+        </div>
+      `;
+      blWrap.querySelectorAll('.bl-chip').forEach(c => {
+        c.onclick = () => this.onPageSelect(c.dataset.id);
+      });
+      headerWrap.appendChild(blWrap);
+    }
 
     // Cover toggle if not present
     if (!page.cover) {
@@ -416,6 +444,15 @@ class AppShell {
       addCoverHint.textContent = '+ Add Cover';
       addCoverHint.onclick = () => this.showCoverPicker(page);
       headerWrap.appendChild(addCoverHint);
+    }
+
+    // Apply Notion page style (Font, Small text, Full width)
+    const viewContainer = document.getElementById('af-page-view-container');
+    if (viewContainer) {
+      viewContainer.className = 'af-page-view-container' +
+        (page.fontFamily ? ` font-${page.fontFamily}` : '') +
+        (page.smallText ? ' is-small-text' : '') +
+        (page.fullWidth ? ' is-full-width' : '');
     }
 
     headerContainer.appendChild(headerWrap);
@@ -581,6 +618,223 @@ class AppShell {
     backdrop.onclick = (e) => {
       if (e.target === backdrop) backdrop.remove();
     };
+  }
+
+  // Notion Feature: Page Options (⋯ Menu)
+  showPageOptionsMenu(e, page) {
+    const existing = document.getElementById('af-notion-page-menu');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.className = 'af-notion-page-menu';
+    popup.id = 'af-notion-page-menu';
+    popup.style.position = 'fixed';
+    popup.style.top = `${e.clientY + 6}px`;
+    popup.style.right = `${Math.max(16, window.innerWidth - e.clientX)}px`;
+
+    // Compute word & character counts
+    let words = 0;
+    let chars = 0;
+    if (page.blocks) {
+      page.blocks.forEach(b => {
+        const txt = b.text || b.content || '';
+        chars += txt.length;
+        words += txt.trim().split(/\s+/).filter(Boolean).length;
+      });
+    }
+    const readTimeMin = Math.max(1, Math.ceil(words / 200));
+
+    popup.innerHTML = `
+      <div class="notion-menu-section">
+        <div class="notion-section-title">STYLE</div>
+        <div class="font-switcher-group">
+          <button class="btn-font-switch ${page.fontFamily === 'sans' || !page.fontFamily ? 'is-selected' : ''}" data-font="sans">Default</button>
+          <button class="btn-font-switch ${page.fontFamily === 'serif' ? 'is-selected' : ''}" data-font="serif" style="font-family: Georgia, serif;">Serif</button>
+          <button class="btn-font-switch ${page.fontFamily === 'mono' ? 'is-selected' : ''}" data-font="mono" style="font-family: monospace;">Mono</button>
+        </div>
+      </div>
+      <div class="notion-menu-section">
+        <label class="notion-toggle-item">
+          <span>Small text</span>
+          <input type="checkbox" id="chk-small-text" ${page.smallText ? 'checked' : ''} />
+        </label>
+        <label class="notion-toggle-item">
+          <span>Full width</span>
+          <input type="checkbox" id="chk-full-width" ${page.fullWidth ? 'checked' : ''} />
+        </label>
+        <label class="notion-toggle-item">
+          <span>Lock page</span>
+          <input type="checkbox" id="chk-lock-page" ${page.isLocked ? 'checked' : ''} />
+        </label>
+      </div>
+      <div class="notion-menu-divider"></div>
+      <div class="notion-menu-section writing-stats">
+        <div>Words: <strong>${words}</strong></div>
+        <div>Characters: <strong>${chars}</strong></div>
+        <div>Read time: <strong>~${readTimeMin} min</strong></div>
+      </div>
+    `;
+
+    popup.querySelectorAll('.btn-font-switch').forEach(btn => {
+      btn.onclick = () => {
+        this.store.updatePage(page.id, { fontFamily: btn.dataset.font });
+        this.updateHeader();
+        popup.remove();
+      };
+    });
+
+    popup.querySelector('#chk-small-text').onchange = (ev) => {
+      this.store.updatePage(page.id, { smallText: ev.target.checked });
+      this.updateHeader();
+    };
+
+    popup.querySelector('#chk-full-width').onchange = (ev) => {
+      this.store.updatePage(page.id, { fullWidth: ev.target.checked });
+      this.updateHeader();
+    };
+
+    popup.querySelector('#chk-lock-page').onchange = (ev) => {
+      this.store.updatePage(page.id, { isLocked: ev.target.checked });
+      this.onPageSelect(page.id);
+      popup.remove();
+    };
+
+    document.body.appendChild(popup);
+    const dismiss = (ev) => {
+      if (!popup.contains(ev.target) && ev.target !== e.target) {
+        popup.remove();
+        document.removeEventListener('click', dismiss);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', dismiss), 50);
+  }
+
+  // Notion Feature: Templates Gallery Modal
+  showTemplatesModal() {
+    const existing = document.getElementById('af-templates-modal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    backdrop.id = 'af-templates-modal';
+
+    const box = document.createElement('div');
+    box.className = 'af-templates-box';
+
+    box.innerHTML = `
+      <div class="templates-head">
+        <h2>📋 Notion Starter Templates</h2>
+        <button class="modal-close-btn">✕</button>
+      </div>
+      <div class="templates-grid">
+        <div class="template-card" data-tmpl="meeting-notes">
+          <div class="tmpl-icon">🤝</div>
+          <div class="tmpl-title">Meeting Notes</div>
+          <div class="tmpl-desc">Attendees, discussion agenda, action items checklist, and owner tags.</div>
+          <button class="btn-use-tmpl">Use Template</button>
+        </div>
+        <div class="template-card" data-tmpl="daily-journal">
+          <div class="tmpl-icon">📔</div>
+          <div class="tmpl-title">Daily Journal & Reflection</div>
+          <div class="tmpl-desc">Morning top 3 priorities, gratitude thoughts, and evening review.</div>
+          <button class="btn-use-tmpl">Use Template</button>
+        </div>
+        <div class="template-card" data-tmpl="reading-list">
+          <div class="tmpl-icon">📚</div>
+          <div class="tmpl-title">Reading List & Tracker</div>
+          <div class="tmpl-desc">Interactive database tracking books, ratings, genres, and status.</div>
+          <button class="btn-use-tmpl">Use Template</button>
+        </div>
+      </div>
+    `;
+
+    box.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+
+    box.querySelectorAll('.btn-use-tmpl').forEach(btn => {
+      btn.onclick = () => {
+        const tmplName = btn.closest('.template-card').dataset.tmpl;
+        const page = this.store.createFromTemplate(tmplName, this.activeSpaceId);
+        backdrop.remove();
+        this.onPageSelect(page.id);
+      };
+    });
+
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+  }
+
+  // Notion Feature: Keyboard Writing Shortcuts
+  initShortcuts() {
+    window.addEventListener('keydown', (e) => {
+      // Focus Mode: Cmd+Shift+F
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        this.toggleFocusMode();
+      }
+      // Typewriter Mode: Cmd+Shift+T
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        this.toggleTypewriterMode();
+      }
+      // Document Outline: Cmd+Shift+O
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        this.toggleOutlineDrawer();
+      }
+      // Today Journal Note: Cmd+Shift+D
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        const note = this.store.createFromTemplate('daily-journal', this.activeSpaceId);
+        this.onPageSelect(note.id);
+      }
+    });
+  }
+
+  toggleFocusMode() {
+    const layout = document.querySelector('.af-app-layout');
+    if (layout) layout.classList.toggle('is-focus-mode');
+  }
+
+  toggleTypewriterMode() {
+    const main = document.querySelector('.af-main-viewport');
+    if (main) main.classList.toggle('is-typewriter-mode');
+  }
+
+  toggleOutlineDrawer() {
+    const drawer = document.getElementById('af-ai-drawer');
+    if (!drawer) return;
+    drawer.classList.toggle('is-open');
+
+    const page = this.store.getPage(this.activePageId);
+    const headings = page && page.blocks ? page.blocks.filter(b => b.type === 'heading') : [];
+
+    drawer.innerHTML = `
+      <div class="ai-drawer-head">
+        <span>📑 Document Outline</span>
+        <button class="modal-close-btn" id="btn-close-outline">✕</button>
+      </div>
+      <div class="outline-drawer-body">
+        ${headings.length === 0 ? '<div class="empty-state">No headings found on this page.</div>' : ''}
+        ${headings.map(h => `
+          <div class="outline-item outline-level-${h.level || 1}" data-id="${h.id}">
+            ${h.text || 'Untitled'}
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    const closeBtn = drawer.querySelector('#btn-close-outline');
+    if (closeBtn) closeBtn.onclick = () => drawer.classList.remove('is-open');
+
+    drawer.querySelectorAll('.outline-item').forEach(item => {
+      item.onclick = () => {
+        const el = document.querySelector(`[data-block-id="${item.dataset.id}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+    });
   }
 }
 

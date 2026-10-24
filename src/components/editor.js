@@ -25,7 +25,11 @@ class BlockEditor {
       { type: 'code', label: 'Code Block', desc: 'Capture a code snippet with formatting.', icon: '💻' },
       { type: 'math', label: 'Math Equation', desc: 'Render mathematical TeX expressions.', icon: '√x' },
       { type: 'divider', label: 'Divider', desc: 'Visually divide blocks.', icon: '—' },
-      { type: 'image', label: 'Image', desc: 'Embed with a link or upload.', icon: '🖼️' }
+      { type: 'image', label: 'Image', desc: 'Embed with a link or upload.', icon: '🖼️' },
+      { type: 'toc', label: 'Table of Contents', desc: 'Auto-generated outline of page headings.', icon: '📑' },
+      { type: 'table', label: 'Simple Table', desc: '2D grid table with custom rows and columns.', icon: '⊞' },
+      { type: 'bookmark', label: 'Web Bookmark', desc: 'Visual link preview card.', icon: '🔗' },
+      { type: 'synced', label: 'Synced Block', desc: 'Sync content across multiple pages.', icon: '🔄' }
     ];
 
     this.render();
@@ -348,6 +352,140 @@ class BlockEditor {
         break;
       }
 
+      case 'toc': {
+        const tocWrap = document.createElement('div');
+        tocWrap.className = 'af-toc-block';
+        const page = this.store.getPage(this.pageId);
+        const headings = (page.blocks || []).filter(b => b.type === 'heading');
+
+        const title = document.createElement('div');
+        title.className = 'toc-header';
+        title.innerHTML = '📑 <strong>Table of Contents</strong>';
+        tocWrap.appendChild(title);
+
+        if (headings.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'toc-empty';
+          empty.textContent = 'Add headings (H1, H2, H3) to see an outline.';
+          tocWrap.appendChild(empty);
+        } else {
+          const list = document.createElement('div');
+          list.className = 'toc-list';
+          headings.forEach(h => {
+            const item = document.createElement('div');
+            item.className = `toc-item toc-level-${h.level || 1}`;
+            item.textContent = h.text || 'Untitled Heading';
+            item.onclick = () => {
+              const target = this.container.querySelector(`[data-block-id="${h.id}"]`);
+              if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            };
+            list.appendChild(item);
+          });
+          tocWrap.appendChild(list);
+        }
+        content.appendChild(tocWrap);
+        break;
+      }
+
+      case 'table': {
+        const tableWrap = document.createElement('div');
+        tableWrap.className = 'af-simple-table-wrap';
+        if (!block.rows || !Array.isArray(block.rows)) {
+          block.rows = [
+            ['Header 1', 'Header 2', 'Header 3'],
+            ['Row 1 Col 1', 'Row 1 Col 2', 'Row 1 Col 3'],
+            ['Row 2 Col 1', 'Row 2 Col 2', 'Row 2 Col 3']
+          ];
+        }
+
+        const tbl = document.createElement('table');
+        tbl.className = 'af-simple-table';
+
+        block.rows.forEach((r, rIdx) => {
+          const tr = document.createElement('tr');
+          if (rIdx === 0 && block.hasHeader !== false) tr.className = 'table-head-row';
+          r.forEach((c, cIdx) => {
+            const cell = document.createElement(rIdx === 0 && block.hasHeader !== false ? 'th' : 'td');
+            cell.contentEditable = !this.isReadOnly ? 'true' : 'false';
+            cell.textContent = c;
+            cell.onblur = () => {
+              block.rows[rIdx][cIdx] = cell.textContent.trim();
+              this.store.updateBlock(this.pageId, block.id, { rows: block.rows });
+              this.onUpdate();
+            };
+            tr.appendChild(cell);
+          });
+          tbl.appendChild(tr);
+        });
+
+        tableWrap.appendChild(tbl);
+
+        if (!this.isReadOnly) {
+          const controls = document.createElement('div');
+          controls.className = 'simple-table-controls';
+
+          const addRowBtn = document.createElement('button');
+          addRowBtn.className = 'btn-table-control';
+          addRowBtn.textContent = '+ Row';
+          addRowBtn.onclick = () => {
+            const colCount = block.rows[0] ? block.rows[0].length : 3;
+            block.rows.push(new Array(colCount).fill(''));
+            this.store.updateBlock(this.pageId, block.id, { rows: block.rows });
+            this.render();
+          };
+
+          const addColBtn = document.createElement('button');
+          addColBtn.className = 'btn-table-control';
+          addColBtn.textContent = '+ Column';
+          addColBtn.onclick = () => {
+            block.rows.forEach(r => r.push(''));
+            this.store.updateBlock(this.pageId, block.id, { rows: block.rows });
+            this.render();
+          };
+
+          controls.appendChild(addRowBtn);
+          controls.appendChild(addColBtn);
+          tableWrap.appendChild(controls);
+        }
+
+        content.appendChild(tableWrap);
+        break;
+      }
+
+      case 'bookmark': {
+        const bm = document.createElement('div');
+        bm.className = 'af-bookmark-card';
+        const url = block.url || 'https://notion.so';
+        let domain = 'web';
+        try { domain = new URL(url).hostname; } catch (_) {}
+
+        bm.innerHTML = `
+          <div class="bm-info">
+            <div class="bm-title">${block.title || domain}</div>
+            <div class="bm-desc">${block.desc || url}</div>
+            <div class="bm-domain">🔗 ${domain}</div>
+          </div>
+        `;
+        bm.onclick = () => window.open(url, '_blank');
+
+        if (!this.isReadOnly) {
+          const urlInput = document.createElement('input');
+          urlInput.className = 'bookmark-edit-input';
+          urlInput.value = block.url || '';
+          urlInput.placeholder = 'Paste bookmark URL...';
+          urlInput.onclick = (e) => e.stopPropagation();
+          urlInput.onchange = () => {
+            const u = urlInput.value.trim();
+            this.store.updateBlock(this.pageId, block.id, { url: u, title: u });
+            this.render();
+          };
+          bm.appendChild(urlInput);
+        }
+
+        content.appendChild(bm);
+        break;
+      }
+
       default: {
         const defP = document.createElement('p');
         this.makeEditable(defP, block, 'text');
@@ -370,6 +508,71 @@ class BlockEditor {
     el.oninput = (e) => {
       const text = el.textContent;
       block[key] = text;
+
+      // Notion Feature: Instant Markdown Typing Shortcuts
+      if (block.type === 'paragraph') {
+        if (text === '# ') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'heading', level: 1, text: '' });
+          this.render();
+          return;
+        }
+        if (text === '## ') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'heading', level: 2, text: '' });
+          this.render();
+          return;
+        }
+        if (text === '### ') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'heading', level: 3, text: '' });
+          this.render();
+          return;
+        }
+        if (text === '- ' || text === '* ') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'bullet', text: '' });
+          this.render();
+          return;
+        }
+        if (text === '1. ') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'number', text: '' });
+          this.render();
+          return;
+        }
+        if (text === '[] ' || text === '[ ] ') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'todo', checked: false, text: '' });
+          this.render();
+          return;
+        }
+        if (text === '[x] ') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'todo', checked: true, text: '' });
+          this.render();
+          return;
+        }
+        if (text === '> ') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'quote', text: '' });
+          this.render();
+          return;
+        }
+        if (text === '"" ') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'callout', icon: '💡', text: '' });
+          this.render();
+          return;
+        }
+        if (text === '---') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'divider', text: '' });
+          this.render();
+          return;
+        }
+        if (text === '```') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'code', language: 'javascript', text: '' });
+          this.render();
+          return;
+        }
+        if (text === '$$') {
+          this.store.updateBlock(this.pageId, block.id, { type: 'math', text: '' });
+          this.render();
+          return;
+        }
+      }
+
       this.store.updateBlock(this.pageId, block.id, { [key]: text });
 
       // Check for Slash Command popup trigger
@@ -536,6 +739,24 @@ class BlockEditor {
     if (opt.level) update.level = opt.level;
     if (opt.type === 'callout') update.icon = '💡';
     if (opt.type === 'todo') update.checked = false;
+    if (opt.type === 'bookmark') {
+      update.url = 'https://notion.so';
+      update.title = 'Notion — Connected Workspace';
+      update.desc = 'A connected workspace for wiki, docs & projects.';
+    }
+    if (opt.type === 'synced') {
+      update.type = 'callout';
+      update.syncId = 'sync-' + Math.random().toString(36).slice(2, 8);
+      update.icon = '🔄';
+      update.text = 'Synced Block: changes here propagate to all synced twin copies.';
+    }
+    if (opt.type === 'table') {
+      update.rows = [
+        ['Heading 1', 'Heading 2', 'Heading 3'],
+        ['Data 1', 'Data 2', 'Data 3'],
+        ['Data 4', 'Data 5', 'Data 6']
+      ];
+    }
 
     this.store.updateBlock(this.pageId, block.id, update);
     this.hideSlashMenu();
@@ -555,6 +776,26 @@ class BlockEditor {
     popup.style.left = `${e.clientX + 4}px`;
 
     const actions = [
+      {
+        label: 'Copy and Sync Block',
+        icon: '🔄',
+        action: () => {
+          if (!block.syncId) {
+            block.syncId = 'sync-' + Math.random().toString(36).slice(2, 8);
+            this.store.updateBlock(this.pageId, block.id, { syncId: block.syncId });
+          }
+          const syncedPayload = {
+            id: 'b-' + Math.random().toString(36).slice(2, 8),
+            type: block.type,
+            text: block.text || '',
+            syncId: block.syncId,
+            level: block.level,
+            checked: block.checked
+          };
+          this.store.insertBlock(this.pageId, syncedPayload, index + 1);
+          this.render();
+        }
+      },
       {
         label: 'Duplicate',
         icon: '📋',

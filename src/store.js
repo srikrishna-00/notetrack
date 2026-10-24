@@ -51,7 +51,10 @@ class AppFlowyStore {
     title = 'Untitled',
     icon = '📄',
     cover = null,
-    type = 'document'
+    type = 'document',
+    fontFamily = 'sans',
+    smallText = false,
+    fullWidth = false
   } = {}) {
     const id = 'page-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
     const now = Date.now();
@@ -67,6 +70,9 @@ class AppFlowyStore {
       isFavorite: false,
       isLocked: false,
       inTrash: false,
+      fontFamily, // 'sans' | 'serif' | 'mono'
+      smallText,
+      fullWidth,
       createdAt: now,
       updatedAt: now,
       blocks: type === 'document' ? [
@@ -227,6 +233,10 @@ class AppFlowyStore {
     return block;
   }
 
+  addBlock(pageId, block, index = -1) {
+    return this.insertBlock(pageId, block, index);
+  }
+
   updateBlock(pageId, blockId, partial) {
     const page = this.data.pages[pageId];
     if (!page || page.isLocked || !page.blocks) return null;
@@ -234,6 +244,27 @@ class AppFlowyStore {
     if (!block) return null;
     Object.assign(block, partial);
     page.updatedAt = Date.now();
+
+    // Notion Synced Block: Synchronize across all instances sharing syncId
+    if (block.syncId) {
+      for (const p of Object.values(this.data.pages)) {
+        if (p.blocks) {
+          for (const b of p.blocks) {
+            if (b.id !== block.id && b.syncId === block.syncId) {
+              if (block.data) b.data = JSON.parse(JSON.stringify(block.data));
+              if (block.text !== undefined) b.text = block.text;
+              if (block.content !== undefined) b.content = block.content;
+              if (block.icon !== undefined) b.icon = block.icon;
+              if (block.checked !== undefined) b.checked = block.checked;
+              if (block.language !== undefined) b.language = block.language;
+              if (block.title !== undefined) b.title = block.title;
+              p.updatedAt = Date.now();
+            }
+          }
+        }
+      }
+    }
+
     this.notify();
     return block;
   }
@@ -544,6 +575,166 @@ class AppFlowyStore {
     }
 
     return results;
+  }
+
+  // Notion Feature: Backlinks Indexer
+  getBacklinks(targetPageId) {
+    const targetPage = this.data.pages[targetPageId];
+    if (!targetPage) return [];
+    const backlinks = [];
+    const targetTitle = (targetPage.title || '').toLowerCase().trim();
+    const tId = String(targetPageId).toLowerCase();
+
+    for (const page of Object.values(this.data.pages)) {
+      if (page.id === targetPageId || page.inTrash) continue;
+      let matched = false;
+
+      if (page.blocks) {
+        for (const b of page.blocks) {
+          const rawText = b.text || b.content || (b.data && b.data.text) || '';
+          const text = String(rawText).toLowerCase();
+          if (
+            text.includes(`@${tId}`) ||
+            text.includes(`[[${tId}]]`) ||
+            (targetTitle && text.includes(`[[${targetTitle}]]`))
+          ) {
+            matched = true;
+            break;
+          }
+        }
+      }
+
+      if (matched) {
+        backlinks.push({
+          pageId: page.id,
+          title: page.title,
+          icon: page.icon || '📄'
+        });
+      }
+    }
+
+    return backlinks;
+  }
+
+  // Notion Feature: Database Formula Evaluation Engine
+  evaluateFormula(formula, rowValues = {}, columns = []) {
+    if (!formula || typeof formula !== 'string') return '';
+    try {
+      const prop = (colName) => {
+        if (rowValues && rowValues[colName] !== undefined && rowValues[colName] !== null) {
+          return rowValues[colName];
+        }
+        const found = (columns || []).find(c => c.name.toLowerCase() === String(colName).toLowerCase() || c.id === colName);
+        if (!found) return '';
+        const val = rowValues[found.id];
+        return val !== undefined && val !== null ? val : '';
+      };
+
+      const round = (n, decimals = 0) => {
+        const factor = Math.pow(10, decimals);
+        return Math.round((Number(n) || 0) * factor) / factor;
+      };
+      const min = (...args) => Math.min(...args.map(Number));
+      const max = (...args) => Math.max(...args.map(Number));
+      const concat = (...args) => args.join('');
+      const iff = (cond, ifTrue, ifFalse) => (cond ? ifTrue : ifFalse);
+
+      let expr = formula.replace(/\bif\s*\(/g, 'iff(');
+      const fn = new Function('prop', 'round', 'min', 'max', 'concat', 'iff', `
+        "use strict";
+        return (${expr});
+      `);
+      const result = fn(prop, round, min, max, concat, iff);
+      return result !== undefined && result !== null ? result : '';
+    } catch (err) {
+      return '#ERROR';
+    }
+  }
+
+  // Notion Feature: Starter Templates
+  createFromTemplate(templateName, spaceId = 'space-personal') {
+    switch (templateName) {
+      case 'meeting-notes': {
+        const page = this.createPage({
+          spaceId,
+          title: 'Weekly Team Sync',
+          icon: '🤝',
+          cover: 'linear-gradient(135deg, #3b82f6 0%, #2dd4bf 100%)',
+          type: 'document'
+        });
+        this.setBlocks(page.id, [
+          { id: 'b1', type: 'heading', level: 1, text: 'Weekly Team Sync' },
+          { id: 'b2', type: 'callout', icon: '📅', text: `Date: ${new Date().toLocaleDateString()} | Attendees: Engineering, Product, Design` },
+          { id: 'b3', type: 'heading', level: 2, text: 'Discussion Agenda' },
+          { id: 'b4', type: 'bullet', text: 'Sprint goals review & blocker clearance' },
+          { id: 'b5', type: 'bullet', text: 'Architecture decisions for local-first sync' },
+          { id: 'b6', type: 'heading', level: 2, text: 'Action Items' },
+          { id: 'b7', type: 'todo', text: 'Benchmark database filter latency under 10k rows', checked: false },
+          { id: 'b8', type: 'todo', text: 'Verify Notion formula evaluation engine', checked: true },
+          { id: 'b9', type: 'divider' },
+          { id: 'b10', type: 'quote', text: '“Clear owners on every action item ensure fast execution.”' }
+        ]);
+        return page;
+      }
+      case 'daily-journal': {
+        const todayStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+        const page = this.createPage({
+          spaceId,
+          title: `Journal — ${todayStr}`,
+          icon: '📔',
+          cover: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+          type: 'document'
+        });
+        this.setBlocks(page.id, [
+          { id: 'b1', type: 'heading', level: 1, text: `Daily Reflection — ${todayStr}` },
+          { id: 'b2', type: 'callout', icon: '🎯', text: 'Top 3 Priorities for Today:' },
+          { id: 'b3', type: 'todo', text: 'Priority 1: Deep work on core feature', checked: false },
+          { id: 'b4', type: 'todo', text: 'Priority 2: Code review & verification', checked: false },
+          { id: 'b5', type: 'todo', text: 'Priority 3: Documentation and release plan', checked: false },
+          { id: 'b6', type: 'heading', level: 2, text: 'Thoughts & Gratitude' },
+          { id: 'b7', type: 'bullet', text: 'What went particularly well yesterday?' },
+          { id: 'b8', type: 'bullet', text: 'What lesson or insight can be carried into today?' }
+        ]);
+        return page;
+      }
+      case 'reading-list': {
+        const page = this.createPage({
+          spaceId,
+          title: 'Books & Reading Tracker',
+          icon: '📚',
+          cover: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+          type: 'database'
+        });
+        const db = this.getDatabase(page.id);
+        db.columns = [
+          { id: 'col_title', name: 'Book Title', type: 'title', width: 220 },
+          { id: 'col_author', name: 'Author', type: 'text', width: 160 },
+          { id: 'col_status', name: 'Status', type: 'select', width: 140, options: ['Want to Read', 'Reading', 'Finished'] },
+          { id: 'col_score', name: 'Rating (1-5)', type: 'number', width: 110 },
+          { id: 'col_genre', name: 'Genre', type: 'select', width: 140, options: ['Software Architecture', 'Computer Science', 'Leadership', 'Philosophy'] }
+        ];
+        db.rows = [
+          {
+            id: 'r1',
+            values: { col_title: 'Designing Data-Intensive Applications', col_author: 'Martin Kleppmann', col_status: 'Finished', col_score: 5, col_genre: 'Computer Science' },
+            document: { blocks: [] }
+          },
+          {
+            id: 'r2',
+            values: { col_title: 'Structure and Interpretation of Computer Programs', col_author: 'Abelson & Sussman', col_status: 'Reading', col_score: 5, col_genre: 'Computer Science' },
+            document: { blocks: [] }
+          },
+          {
+            id: 'r3',
+            values: { col_title: 'A Philosophy of Software Design', col_author: 'John Ousterhout', col_status: 'Want to Read', col_score: 5, col_genre: 'Software Architecture' },
+            document: { blocks: [] }
+          }
+        ];
+        return page;
+      }
+      default:
+        return this.createPage({ spaceId, title: 'Untitled' });
+    }
   }
 
   // Pre-configured default workspace demonstrating 100% of AppFlowy features

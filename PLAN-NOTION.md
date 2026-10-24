@@ -1,0 +1,28 @@
+# Implementation Plan: Notion Feature Additions
+
+- [ ] Task 1: Extend `src/store.js`
+  - Add Backlinks indexing (`getBacklinks(pageId)`).
+  - Add Synced Block state & sync broadcaster (`syncBlocks(sourceId, patch)`).
+  - Add Notion formula parser (`evaluateFormula(formula, rowValues, columns)`).
+  - Add Notion starter templates gallery (Meeting Notes, Weekly Tasks, Journal, Roadmap, Reading List).
+  - Add Page style preferences (`fontFamily`, `smallText`, `fullWidth`).
+- [ ] Task 2: Extend `src/components/editor.js`
+  - Implement Markdown typing auto-conversions (`# `, `## `, `### `, `- `, `* `, `1. `, `[] `, `[x] `, `> `, `---`, ```` ``` ````, `$$`, `"" `).
+  - Implement `toc` (Table of Contents) block.
+  - Implement `table` (Simple Table) block with row/col controls.
+  - Implement `bookmark` (Web Bookmark / Link Preview) block.
+  - Implement Synced Block wrapper UI with red/amber sync indicator.
+  - Implement `@` / `[[` page link mention chip and auto-linking.
+- [ ] Task 3: Extend `src/components/database.js`
+  - Implement `multi_select` property with tag chips.
+  - Implement `formula` property rendering computed values in real time.
+- [ ] Task 4: Extend `src/components/shell.js`
+  - Implement Notion-style ⋯ Page Menu: Font switcher (Sans, Serif, Mono), Small Text toggle, Full Width toggle, Word Count / Character Count / Reading Time display.
+  - Implement Backlinks bar at top of page.
+  - Implement Writing Modes: Focus Mode (<kbd>Cmd+Shift+F</kbd>), Typewriter Mode (<kbd>Cmd+Shift+T</kbd>), Document Outline drawer (<kbd>Cmd+Shift+O</kbd>), Daily Journal note (<kbd>Cmd+Shift+D</kbd>).
+  - Add "Templates" button to sidebar to instantiate Notion templates.
+- [ ] Task 5: Enhance `src/styles.css`
+  - Styles for Serif / Mono typography, small text, full width, Simple Table, Table of Contents, Bookmark card, Synced blocks, Backlinks pill, Outline drawer, Focus mode.
+- [ ] Task 6: Automated Test Verification
+  - Unit tests in `test/notion.test.js` verifying formulas, backlinks, synced blocks, templates, and Markdown auto-transforms.
+  - Automated smoke test with Electron.

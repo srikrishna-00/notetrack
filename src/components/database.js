@@ -357,6 +357,46 @@ class DatabaseView {
         break;
       }
 
+      case 'formula': {
+        const db = this.store.getDatabase(this.pageId);
+        const computed = this.store.evaluateFormula(col.formula || 'prop("c_estimate") * 1.5', row.values, db.columns);
+        const formulaTag = document.createElement('div');
+        formulaTag.className = 'cell-formula-result';
+        formulaTag.innerHTML = `<span class="formula-fx">ƒx</span> <span>${computed}</span>`;
+        formulaTag.title = `Formula: ${col.formula || 'prop("...")'}`;
+        td.appendChild(formulaTag);
+        break;
+      }
+
+      case 'multi_select': {
+        const msWrap = document.createElement('div');
+        msWrap.className = 'cell-multi-select-wrap';
+        const tags = Array.isArray(val) ? val : (val ? [val] : []);
+        tags.forEach(t => {
+          const chip = document.createElement('span');
+          chip.className = 'prop-tag tag-multi';
+          chip.textContent = t;
+          msWrap.appendChild(chip);
+        });
+
+        const addTagBtn = document.createElement('button');
+        addTagBtn.className = 'cell-add-tag-btn';
+        addTagBtn.textContent = '+';
+        addTagBtn.title = 'Add tag';
+        addTagBtn.onclick = (e) => {
+          e.stopPropagation();
+          const pick = prompt('Select tag to add:\n' + (col.options || ['Feature', 'Bug', 'Enhancement']).join(', '));
+          if (pick) {
+            const nextTags = [...new Set([...tags, pick.trim()])];
+            this.store.updateCell(this.pageId, row.id, col.id, nextTags);
+            this.render();
+          }
+        };
+        msWrap.appendChild(addTagBtn);
+        td.appendChild(msWrap);
+        break;
+      }
+
       default: {
         const textDiv = document.createElement('div');
         textDiv.contentEditable = 'true';
@@ -803,17 +843,21 @@ class DatabaseView {
     const colName = prompt('Enter property name:');
     if (!colName || !colName.trim()) return;
 
-    const typeStr = prompt('Property type (text, number, select, date, checkbox, url):', 'text');
-    const validTypes = ['text', 'number', 'select', 'date', 'checkbox', 'url'];
+    const typeStr = prompt('Property type (text, number, select, multi_select, formula, date, checkbox, url):', 'text');
+    const validTypes = ['text', 'number', 'select', 'multi_select', 'formula', 'date', 'checkbox', 'url'];
     const type = validTypes.includes(typeStr) ? typeStr : 'text';
 
     let options = [];
-    if (type === 'select') {
-      const optsStr = prompt('Comma-separated options:', 'Low, Medium, High');
+    let formula = '';
+    if (type === 'select' || type === 'multi_select') {
+      const optsStr = prompt('Comma-separated options:', 'Feature, Bug, Enhancement');
       if (optsStr) options = optsStr.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (type === 'formula') {
+      formula = prompt('Enter formula expression (e.g. prop("col_estimate") * 1.5):', 'prop("col_estimate") * 2') || '';
     }
 
-    this.store.addColumn(this.pageId, { name: colName.trim(), type, options });
+    const col = this.store.addColumn(this.pageId, { name: colName.trim(), type, options });
+    if (col && formula) col.formula = formula;
     this.render();
   }
 
@@ -860,7 +904,9 @@ class DatabaseView {
       select: '🏷️',
       date: '📅',
       checkbox: '☑️',
-      url: '🔗'
+      url: '🔗',
+      formula: 'ƒx',
+      multi_select: '🏷️🏷️'
     };
     return icons[type] || '📄';
   }
