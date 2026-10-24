@@ -160,6 +160,25 @@ class AppShell {
     });
     sidebar.appendChild(spaceTabs);
 
+    // WhatsApp & Telegram Feature: Pinned Notes
+    const pinned = Object.values(this.store.data.pages).filter(p => !p.inTrash && p.isPinned);
+    if (pinned.length > 0) {
+      const pinSection = document.createElement('div');
+      pinSection.className = 'sidebar-section sidebar-pinned-section';
+      pinSection.innerHTML = '<div class="sidebar-section-title">📌 Pinned Notes</div>';
+      const pinList = document.createElement('div');
+      pinList.className = 'sidebar-tree';
+      pinned.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'tree-item' + (p.id === this.activePageId ? ' is-active' : '');
+        item.innerHTML = `<span class="item-icon">${p.icon || '📄'}</span> <span class="item-title">${p.title}</span>`;
+        item.onclick = () => this.onPageSelect(p.id);
+        pinList.appendChild(item);
+      });
+      pinSection.appendChild(pinList);
+      sidebar.appendChild(pinSection);
+    }
+
     // Favorites Accordion
     if (favorites.length > 0) {
       const favSection = document.createElement('div');
@@ -185,10 +204,17 @@ class AppShell {
     pagesSection.className = 'sidebar-section sidebar-pages-section';
     pagesSection.innerHTML = `
       <div class="sidebar-section-title">
-        <span>Pages</span>
-        <button class="section-add-btn" id="btn-add-root-page" title="New Page">+</button>
+        <span>Workspace</span>
+        <div style="display:flex;gap:4px;">
+          <button class="section-add-btn" id="btn-add-folder" title="New Folder">📁+</button>
+          <button class="section-add-btn" id="btn-add-root-page" title="New Page">+</button>
+        </div>
       </div>
     `;
+    pagesSection.querySelector('#btn-add-folder').onclick = () => {
+      const fld = this.store.createFolder({ spaceId: this.activeSpaceId, title: 'New Folder' });
+      this.onPageSelect(fld.id);
+    };
     pagesSection.querySelector('#btn-add-root-page').onclick = () => {
       const newP = this.store.createPage({ spaceId: this.activeSpaceId, title: 'Untitled Page' });
       this.onPageSelect(newP.id);
@@ -229,12 +255,26 @@ class AppShell {
         <span>🗑️ Trash</span>
         ${trash.length > 0 ? `<span class="trash-badge">${trash.length}</span>` : ''}
       </button>
+      <button class="sb-tool-btn" id="sb-saved-msg-btn" title="Telegram Saved Messages">💬 Saved</button>
       <button class="sb-tool-btn" id="sb-clip-btn" title="Evernote Web Clipper (Cmd+Shift+C)">📎 Clip</button>
       <button class="sb-tool-btn" id="sb-templates-btn">📋 Templates</button>
       <button class="sb-tool-btn" id="sb-new-doc-btn">+ New</button>
     `;
 
     bottomTools.querySelector('#sb-trash-btn').onclick = () => this.showTrashModal();
+    bottomTools.querySelector('#sb-saved-msg-btn').onclick = () => {
+      let savedMsgPage = Object.values(this.store.data.pages).find(p => !p.inTrash && p.type === 'chat');
+      if (!savedMsgPage) {
+        savedMsgPage = this.store.createPage({
+          spaceId: this.activeSpaceId,
+          title: 'Saved Messages',
+          type: 'chat',
+          icon: '💬',
+          isPinned: true
+        });
+      }
+      this.onPageSelect(savedMsgPage.id);
+    };
     bottomTools.querySelector('#sb-clip-btn').onclick = () => this.showWebClipperModal();
     bottomTools.querySelector('#sb-templates-btn').onclick = () => this.showTemplatesModal();
     bottomTools.querySelector('#sb-new-doc-btn').onclick = () => {
@@ -624,6 +664,38 @@ class AppShell {
         }
       },
       {
+        label: node.isPinned ? 'Unpin from Top' : 'Pin to Top (📌)',
+        icon: '📌',
+        action: () => {
+          this.store.togglePin(node.id);
+          this.updateSidebar();
+        }
+      },
+      {
+        label: node.isStarred ? 'Unstar Note' : 'Star Note (⭐)',
+        icon: '⭐',
+        action: () => {
+          this.store.toggleStar(node.id);
+          this.updateSidebar();
+        }
+      },
+      {
+        label: 'Add Page Inside',
+        icon: '📄',
+        action: () => {
+          const child = this.store.createPage({ spaceId: node.spaceId, parentId: node.id, title: 'Untitled Page' });
+          this.onPageSelect(child.id);
+        }
+      },
+      {
+        label: 'Add Subfolder Inside',
+        icon: '📁',
+        action: () => {
+          const fld = this.store.createFolder({ spaceId: node.spaceId, parentId: node.id, title: 'New Subfolder' });
+          this.onPageSelect(fld.id);
+        }
+      },
+      {
         label: node.isLocked ? 'Unlock Page' : 'Lock Page',
         icon: '🔒',
         action: () => {
@@ -791,6 +863,28 @@ class AppShell {
         <div>Read time: <strong>~${readTimeMin} min</strong></div>
       </div>
       <div class="notion-menu-divider"></div>
+      <div class="notion-menu-section">
+        <div class="notion-section-title">PAGE BACKGROUND COLOR</div>
+        <div class="page-bg-palette" style="display:flex;gap:6px;padding:4px 0;">
+          <button class="bg-color-dot" data-val="" style="background:var(--bg-primary);border:1px solid var(--border-color);" title="Default Theme"></button>
+          <button class="bg-color-dot" data-val="#2a241a" style="background:#2a241a;" title="Sepia Warm"></button>
+          <button class="bg-color-dot" data-val="#2b2713" style="background:#2b2713;" title="Pastel Yellow"></button>
+          <button class="bg-color-dot" data-val="#11291f" style="background:#11291f;" title="Mint Green"></button>
+          <button class="bg-color-dot" data-val="#122338" style="background:#122338;" title="Ocean Blue"></button>
+          <button class="bg-color-dot" data-val="#241433" style="background:#241433;" title="Lavender"></button>
+          <button class="bg-color-dot" data-val="#2e1318" style="background:#2e1318;" title="Rose Pink"></button>
+          <button class="bg-color-dot" data-val="#000000" style="background:#000000;border:1px solid #333;" title="AMOLED Black"></button>
+        </div>
+      </div>
+      <div class="notion-menu-divider"></div>
+      <div class="notion-menu-section">
+        <div class="notion-section-title">WHATSAPP & TELEGRAM FEATURES</div>
+        <button class="menu-action-item" id="btn-menu-pin">${page.isPinned ? '📌 Unpin from Top' : '📌 Pin to Top'}</button>
+        <button class="menu-action-item" id="btn-menu-star">${page.isStarred ? '⭐ Unstar Note' : '⭐ Star Note'}</button>
+        <button class="menu-action-item" id="btn-menu-share-wa">💬 Share via WhatsApp</button>
+        <button class="menu-action-item" id="btn-menu-share-tg">✈️ Share via Telegram</button>
+      </div>
+      <div class="notion-menu-divider"></div>
       <div class="notion-menu-section evernote-menu-actions">
         <button class="menu-action-item" id="btn-menu-reminder">⏰ Set Note Reminder</button>
         <button class="menu-action-item" id="btn-menu-info">ℹ️ Note Info & Details</button>
@@ -803,6 +897,7 @@ class AppShell {
         <button class="menu-action-item text-danger" id="btn-menu-del-doc">🗑️ Delete Document (Move to Trash)</button>
         <button class="menu-action-item" id="btn-menu-del-voice">🎙️ Remove Voice Memos (${(page.blocks || []).filter(b => b.type === 'audio').length})</button>
         <button class="menu-action-item" id="btn-menu-del-images">🖼️ Remove Images (${(page.blocks || []).filter(b => b.type === 'image').length})</button>
+        <button class="menu-action-item" id="btn-menu-del-files">📎 Remove Files & PDFs (${(page.blocks || []).filter(b => b.type === 'file' || b.type === 'pdf').length})</button>
         <button class="menu-action-item" id="btn-menu-clear-doc">📄 Clear Document Content</button>
         <button class="menu-action-item" id="btn-menu-cleanup-modal">🧹 Manage & Delete Media...</button>
       </div>
@@ -863,6 +958,40 @@ class AppShell {
       }
     };
 
+    popup.querySelectorAll('.bg-color-dot').forEach(dot => {
+      dot.onclick = () => {
+        const bgVal = dot.dataset.val;
+        this.store.updatePage(page.id, { bgColor: bgVal });
+        const ed = document.querySelector('.af-editor');
+        if (ed) ed.style.backgroundColor = bgVal || '';
+        popup.remove();
+      };
+    });
+
+    popup.querySelector('#btn-menu-pin').onclick = () => {
+      this.store.togglePin(page.id);
+      this.updateSidebar();
+      popup.remove();
+    };
+
+    popup.querySelector('#btn-menu-star').onclick = () => {
+      this.store.toggleStar(page.id);
+      this.updateSidebar();
+      popup.remove();
+    };
+
+    popup.querySelector('#btn-menu-share-wa').onclick = () => {
+      const text = encodeURIComponent(`*${page.title}*\n\nRead more in NoteTrack.`);
+      window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+      popup.remove();
+    };
+
+    popup.querySelector('#btn-menu-share-tg').onclick = () => {
+      const text = encodeURIComponent(page.title);
+      window.open(`https://t.me/share/url?url=https://notetrack.app&text=${text}`, '_blank');
+      popup.remove();
+    };
+
     popup.querySelector('#btn-menu-del-voice').onclick = () => {
       popup.remove();
       const removed = this.store.removeBlocksByType(page.id, 'audio');
@@ -875,6 +1004,13 @@ class AppShell {
       const removed = this.store.removeBlocksByType(page.id, 'image');
       this.onPageSelect(page.id);
       alert(`Removed ${removed} image(s) from "${page.title}".`);
+    };
+
+    popup.querySelector('#btn-menu-del-files').onclick = () => {
+      popup.remove();
+      const removed = this.store.removeBlocksByType(page.id, ['file', 'pdf']);
+      this.onPageSelect(page.id);
+      alert(`Removed ${removed} attached file(s) and PDF(s) from "${page.title}".`);
     };
 
     popup.querySelector('#btn-menu-clear-doc').onclick = () => {
@@ -1625,6 +1761,11 @@ class AppShell {
       <button class="m-tool-pill" data-type="paragraph" title="Add Paragraph">+ Text</button>
       <button class="m-tool-pill" data-type="heading" title="Heading 2">H2</button>
       <button class="m-tool-pill" data-type="todo" title="Todo Checklist">☑ Todo</button>
+      <button class="m-tool-pill" data-type="file" title="Attach Document / PDF">📎 File</button>
+      <button class="m-tool-pill" data-type="pdf" title="PDF Reader">📕 PDF</button>
+      <button class="m-tool-pill" data-type="diagram" title="Flowchart / Diagram">📊 Diagram</button>
+      <button class="m-tool-pill" data-type="sticky" title="Sticky Note">📌 Sticky</button>
+      <button class="m-tool-pill" data-type="chat" title="Saved Message">💬 Chat</button>
       <button class="m-tool-pill" data-type="audio" title="Voice Memo">🎙️ Voice</button>
       <button class="m-tool-pill" data-type="image" title="Photo / Image">📷 Photo</button>
       <button class="m-tool-pill" data-type="bullet" title="Bullet List">• Bullet</button>
@@ -1646,6 +1787,11 @@ class AppShell {
         if (type === 'audio') newBlock = { type: 'audio', audioData: null, duration: 0, title: 'Voice Memo' };
         if (type === 'image') newBlock = { type: 'image', url: '', caption: '' };
         if (type === 'code') newBlock = { type: 'code', text: '', language: 'javascript' };
+        if (type === 'file') newBlock = { type: 'file', fileName: '', fileSize: 0, fileType: '', url: '' };
+        if (type === 'pdf') newBlock = { type: 'pdf', fileName: '', fileSize: 0, fileType: 'application/pdf', url: '' };
+        if (type === 'diagram') newBlock = { type: 'diagram', diagramType: 'flowchart', title: 'Flowchart', steps: [{ label: 'Start', color: '#3b82f6' }, { label: 'Process', color: '#8b5cf6' }, { label: 'Complete', color: '#10b981' }] };
+        if (type === 'sticky') newBlock = { type: 'sticky', color: '#fef08a', text: 'Quick sticky note...' };
+        if (type === 'chat') newBlock = { type: 'chat', sender: 'me', text: 'Saved thought...', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
         this.store.insertBlock(this.activePageId, newBlock);
         this.onPageSelect(this.activePageId);
       };
@@ -1667,6 +1813,7 @@ class AppShell {
     const blocks = Array.isArray(page.blocks) ? page.blocks : [];
     const voiceBlocks = blocks.filter(b => b.type === 'audio');
     const imageBlocks = blocks.filter(b => b.type === 'image');
+    const fileBlocks = blocks.filter(b => b.type === 'file' || b.type === 'pdf');
 
     box.innerHTML = `
       <div class="cleanup-modal-head">
@@ -1674,7 +1821,7 @@ class AppShell {
         <button class="modal-close-btn">✕</button>
       </div>
       <div class="cleanup-modal-body">
-        <p class="cleanup-sub">Granularly remove voice memos, images, document content, or the entire document.</p>
+        <p class="cleanup-sub">Granularly remove voice memos, images, attached files, or page content.</p>
 
         <!-- 1. Voice Memos Section -->
         <div class="cleanup-card">
@@ -1720,7 +1867,29 @@ class AppShell {
           ` : ''}
         </div>
 
-        <!-- 3. Document / Page Content Section -->
+        <!-- 3. Files & Documents Section -->
+        <div class="cleanup-card">
+          <div class="cleanup-card-header">
+            <span class="cleanup-icon">📎</span>
+            <div>
+              <div class="cleanup-title">Attached Files & Documents (${fileBlocks.length})</div>
+              <div class="cleanup-desc">Attached PDFs, DOCX, XLSX, ZIP, and other documents.</div>
+            </div>
+            ${fileBlocks.length > 0 ? `<button class="btn-cleanup-act danger" id="btn-del-all-files">🗑️ Remove All Files</button>` : `<span class="badge-none">None</span>`}
+          </div>
+          ${fileBlocks.length > 0 ? `
+            <div class="cleanup-items-list">
+              ${fileBlocks.map((fb, idx) => `
+                <div class="cleanup-item-row" data-id="${fb.id}">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;">📎 ${fb.fileName || 'File ' + (idx + 1)}</span>
+                  <button class="btn-del-item" data-id="${fb.id}">Delete</button>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 4. Document / Page Content Section -->
         <div class="cleanup-card">
           <div class="cleanup-card-header">
             <span class="cleanup-icon">📄</span>
@@ -1752,6 +1921,15 @@ class AppShell {
     if (delAllImages) {
       delAllImages.onclick = () => {
         this.store.removeBlocksByType(page.id, 'image');
+        backdrop.remove();
+        this.onPageSelect(page.id);
+      };
+    }
+
+    const delAllFiles = box.querySelector('#btn-del-all-files');
+    if (delAllFiles) {
+      delAllFiles.onclick = () => {
+        this.store.removeBlocksByType(page.id, ['file', 'pdf']);
         backdrop.remove();
         this.onPageSelect(page.id);
       };

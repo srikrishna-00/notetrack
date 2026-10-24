@@ -111,6 +111,10 @@
         pageId,
         onUpdate: () => shell.updateSidebar()
       });
+    } else if (page.type === 'folder') {
+      currentEditor = null;
+      currentDbView = null;
+      renderFolderView(viewContainer, pageId);
     } else {
       currentDbView = null;
       currentEditor = new BlockEditor(viewContainer, {
@@ -120,6 +124,162 @@
         onUpdate: () => shell.updateSidebar()
       });
     }
+  }
+
+  function renderFolderView(container, pageId) {
+    const page = store.getPage(pageId);
+    if (!page) return;
+    const contents = store.getFolderContents(pageId);
+
+    const folderWrap = document.createElement('div');
+    folderWrap.className = 'af-folder-workspace';
+
+    folderWrap.innerHTML = `
+      <div class="folder-header-hero">
+        <div class="folder-big-icon">${page.icon || '📁'}</div>
+        <div class="folder-header-info">
+          <h1 class="folder-title" contenteditable="true" spellcheck="false">${page.title || 'Untitled Folder'}</h1>
+          <div class="folder-meta-row">
+            <span class="folder-pill">📁 FOLDER</span>
+            <span class="folder-count">${contents.length} ${contents.length === 1 ? 'item' : 'items'}</span>
+            <span class="folder-date">Updated ${new Date(page.updatedAt).toLocaleDateString()}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="folder-actions-row">
+        <button class="btn-folder-action" id="btn-fld-new-doc">+ 📄 Document</button>
+        <button class="btn-folder-action" id="btn-fld-new-db">+ 📊 Database</button>
+        <button class="btn-folder-action" id="btn-fld-new-sub">+ 📁 Subfolder</button>
+        <button class="btn-folder-action" id="btn-fld-upload">+ 📎 Upload File</button>
+        <input type="file" id="fld-file-picker" style="display:none;" />
+      </div>
+
+      <div class="folder-grid">
+        ${contents.length === 0 ? `
+          <div class="folder-empty-state">
+            <div class="empty-folder-art">📂</div>
+            <h3>This folder is currently empty</h3>
+            <p>Create documents, databases, subfolders, or upload any file format into this folder.</p>
+          </div>
+        ` : contents.map(child => `
+          <div class="folder-item-card" data-id="${child.id}">
+            <div class="folder-item-top">
+              <span class="folder-item-icon">${child.icon || (child.type === 'folder' ? '📁' : (child.type === 'database' ? '📊' : '📄'))}</span>
+              <span class="folder-item-badge ${child.type}">${child.type.toUpperCase()}</span>
+            </div>
+            <div class="folder-item-title">${child.title || 'Untitled'}</div>
+            <div class="folder-item-bottom">
+              <span class="folder-item-date">${new Date(child.updatedAt).toLocaleDateString()}</span>
+              <button class="btn-del-folder-item" data-id="${child.id}" title="Move to Trash">✕</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="folder-dropzone" id="folder-dropzone">
+        <span class="folder-drop-icon">📥</span>
+        <div class="folder-drop-text">
+          <strong>Drag & Drop files into this folder</strong>
+          <span>Accepts all extensions: PDF, Word, Excel, PowerPoint, ZIP, Code, & media</span>
+        </div>
+      </div>
+    `;
+
+    const titleEl = folderWrap.querySelector('.folder-title');
+    titleEl.onblur = () => {
+      const newTitle = titleEl.textContent.trim() || 'Untitled Folder';
+      store.updatePage(pageId, { title: newTitle });
+      shell.updateSidebar();
+      shell.updateTabs();
+    };
+
+    folderWrap.querySelector('#btn-fld-new-doc').onclick = () => {
+      const p = store.createPage({ spaceId: page.spaceId, parentId: pageId, title: 'Untitled Document', type: 'document' });
+      renderPageView(p.id);
+    };
+
+    folderWrap.querySelector('#btn-fld-new-db').onclick = () => {
+      const p = store.createPage({ spaceId: page.spaceId, parentId: pageId, title: 'Untitled Database', type: 'database', icon: '📊' });
+      renderPageView(p.id);
+    };
+
+    folderWrap.querySelector('#btn-fld-new-sub').onclick = () => {
+      const p = store.createFolder({ spaceId: page.spaceId, parentId: pageId, title: 'New Subfolder' });
+      renderPageView(p.id);
+    };
+
+    const filePicker = folderWrap.querySelector('#fld-file-picker');
+    folderWrap.querySelector('#btn-fld-upload').onclick = () => filePicker.click();
+
+    const addFileToFolder = (file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type.includes('pdf');
+        const fileBlock = {
+          id: 'b-' + Math.random().toString(36).slice(2, 8),
+          type: isPdf ? 'pdf' : 'file',
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          url: reader.result,
+          updatedAt: Date.now()
+        };
+        const newDoc = store.createPage({
+          spaceId: page.spaceId,
+          parentId: pageId,
+          title: file.name,
+          icon: isPdf ? '📕' : '📎',
+          type: 'document'
+        });
+        store.setBlocks(newDoc.id, [
+          { id: 'b-h1', type: 'heading', level: 1, text: file.name },
+          fileBlock
+        ]);
+        renderFolderView(container, pageId);
+      };
+      reader.readAsDataURL(file);
+    };
+
+    filePicker.onchange = (e) => {
+      if (e.target.files && e.target.files[0]) addFileToFolder(e.target.files[0]);
+    };
+
+    const dropzone = folderWrap.querySelector('#folder-dropzone');
+    dropzone.ondragover = (e) => {
+      e.preventDefault();
+      dropzone.classList.add('is-dragging');
+    };
+    dropzone.ondragleave = (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('is-dragging');
+    };
+    dropzone.ondrop = (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('is-dragging');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+        addFileToFolder(e.dataTransfer.files[0]);
+      }
+    };
+
+    folderWrap.querySelectorAll('.folder-item-card').forEach(card => {
+      card.onclick = (e) => {
+        if (e.target.closest('.btn-del-folder-item')) return;
+        renderPageView(card.dataset.id);
+      };
+    });
+
+    folderWrap.querySelectorAll('.btn-del-folder-item').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        store.deletePage(btn.dataset.id);
+        renderFolderView(container, pageId);
+        shell.updateSidebar();
+      };
+    });
+
+    container.appendChild(folderWrap);
   }
 
   // 7. AI Assistant Drawer

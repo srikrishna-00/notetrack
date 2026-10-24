@@ -69,12 +69,15 @@ class AppFlowyStore {
       spaceId,
       parentId,
       title,
-      icon,
+      icon: type === 'folder' ? (icon === '📄' ? '📁' : icon) : (type === 'chat' ? '💬' : icon),
       cover,
-      type, // 'document' | 'database'
+      type, // 'document' | 'database' | 'folder' | 'chat'
       isFavorite: false,
+      isPinned: false,
+      isStarred: false,
       isLocked: false,
       inTrash: false,
+      bgColor: null,
       fontFamily, // 'sans' | 'serif' | 'mono'
       smallText,
       fullWidth,
@@ -88,7 +91,9 @@ class AppFlowyStore {
       blocks: type === 'document' ? [
         { id: 'b-' + Math.random().toString(36).slice(2, 8), type: 'heading', level: 1, text: title },
         { id: 'b-' + Math.random().toString(36).slice(2, 8), type: 'paragraph', text: '' }
-      ] : []
+      ] : (type === 'chat' ? [
+        { id: 'b-' + Math.random().toString(36).slice(2, 8), type: 'chat', sender: 'me', text: 'Welcome to Saved Messages! Jot down instant ideas, reminders, links, and notes here.', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+      ] : [])
     };
 
     this.data.pages[id] = page;
@@ -120,6 +125,32 @@ class AppFlowyStore {
     page.updatedAt = Date.now();
     this.notify();
     return page.isFavorite;
+  }
+
+  togglePin(id) {
+    const page = this.data.pages[id];
+    if (!page) return null;
+    page.isPinned = !page.isPinned;
+    page.updatedAt = Date.now();
+    this.notify();
+    return page.isPinned;
+  }
+
+  toggleStar(id) {
+    const page = this.data.pages[id];
+    if (!page) return null;
+    page.isStarred = !page.isStarred;
+    page.updatedAt = Date.now();
+    this.notify();
+    return page.isStarred;
+  }
+
+  createFolder({ spaceId = 'space-personal', parentId = null, title = 'New Folder', icon = '📁' } = {}) {
+    return this.createPage({ spaceId, parentId, title, icon, type: 'folder' });
+  }
+
+  getFolderContents(folderId) {
+    return Object.values(this.data.pages).filter(p => !p.inTrash && p.parentId === folderId);
   }
 
   toggleLock(id) {
@@ -302,12 +333,13 @@ class AppFlowyStore {
     return true;
   }
 
-  // Granular Deletion: Remove all blocks of a specific type (e.g. 'audio', 'image')
+  // Granular Deletion: Remove all blocks of a specific type (e.g. 'audio', 'image', 'file', 'pdf')
   removeBlocksByType(pageId, type) {
     const page = this.data.pages[pageId];
     if (!page || page.isLocked || !Array.isArray(page.blocks)) return 0;
     const initialLen = page.blocks.length;
-    page.blocks = page.blocks.filter(b => b.type !== type);
+    const types = Array.isArray(type) ? type : [type];
+    page.blocks = page.blocks.filter(b => !types.includes(b.type));
     const removedCount = initialLen - page.blocks.length;
     if (page.blocks.length === 0) {
       page.blocks.push({ id: 'b-' + Math.random().toString(36).slice(2, 8), type: 'paragraph', text: '' });

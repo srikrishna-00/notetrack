@@ -83,6 +83,14 @@ function pageToMarkdown(page) {
         lines.push('');
         break;
       }
+      case 'file':
+      case 'pdf': {
+        const title = b.fileName || (b.type === 'pdf' ? 'PDF Document' : 'Attachment');
+        const icon = b.type === 'pdf' ? '📕' : '📎';
+        lines.push(`[${icon} ${title}](${b.url || '#'})`);
+        lines.push('');
+        break;
+      }
       default: {
         if (b.text) lines.push(b.text + '\n');
         break;
@@ -235,6 +243,19 @@ function markdownToBlocks(markdown) {
         id: makeId(),
         type: 'quote',
         text: trimmed.replace(/^>\s*/, '')
+      });
+      continue;
+    }
+
+    // File / PDF attachment ([📎 name](url) or [📕 name](url))
+    if (/^\[(?:📎|📕)\s*(.*?)\]\((.*?)\)$/.test(trimmed)) {
+      const m = trimmed.match(/^\[(?:📎|📕)\s*(.*?)\]\((.*?)\)$/);
+      const isPdf = m[1].toLowerCase().endsWith('.pdf') || m[2].toLowerCase().includes('application/pdf');
+      blocks.push({
+        id: makeId(),
+        type: isPdf ? 'pdf' : 'file',
+        fileName: m[1],
+        url: m[2]
       });
       continue;
     }

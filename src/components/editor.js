@@ -1,5 +1,105 @@
-// src/components/editor.js - Block-based Document Editor for AppFlowy Lean
+// src/components/editor.js - Block-based Document Editor for NoteTrack
 'use strict';
+
+function formatFileSize(bytes) {
+  if (!bytes || isNaN(bytes)) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let size = bytes;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function getFileMeta(fileName = '', mimeType = '') {
+  const ext = (fileName.split('.').pop() || '').toLowerCase();
+  const mime = (mimeType || '').toLowerCase();
+  if (ext === 'pdf' || mime.includes('pdf')) {
+    return { icon: '📕', badge: 'PDF', color: '#ef4444', isPdf: true };
+  }
+  if (['doc', 'docx', 'odt', 'rtf'].includes(ext) || mime.includes('word')) {
+    return { icon: '📘', badge: ext.toUpperCase() || 'DOC', color: '#2563eb' };
+  }
+  if (['xls', 'xlsx', 'csv', 'ods', 'tsv'].includes(ext) || mime.includes('sheet') || mime.includes('csv')) {
+    return { icon: '📗', badge: ext.toUpperCase() || 'SHEET', color: '#10b981' };
+  }
+  if (['ppt', 'pptx', 'odp'].includes(ext) || mime.includes('presentation')) {
+    return { icon: '📙', badge: ext.toUpperCase() || 'SLIDES', color: '#f59e0b' };
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext) || mime.includes('zip') || mime.includes('archive')) {
+    return { icon: '🗜️', badge: ext.toUpperCase() || 'ZIP', color: '#8b5cf6' };
+  }
+  if (['js', 'ts', 'jsx', 'tsx', 'json', 'html', 'css', 'py', 'java', 'c', 'cpp', 'rs', 'go', 'sql', 'sh'].includes(ext)) {
+    return { icon: '💻', badge: ext.toUpperCase(), color: '#06b6d4', isCode: true };
+  }
+  if (['txt', 'md', 'log'].includes(ext) || mime.startsWith('text/')) {
+    return { icon: '📝', badge: ext.toUpperCase() || 'TXT', color: '#64748b', isText: true };
+  }
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext) || mime.startsWith('image/')) {
+    return { icon: '🖼️', badge: ext.toUpperCase() || 'IMG', color: '#10b981', isImage: true };
+  }
+  if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext) || mime.startsWith('audio/')) {
+    return { icon: '🎵', badge: ext.toUpperCase() || 'AUDIO', color: '#0ea5e9' };
+  }
+  if (['mp4', 'mov', 'webm', 'mkv'].includes(ext) || mime.startsWith('video/')) {
+    return { icon: '🎬', badge: ext.toUpperCase() || 'VIDEO', color: '#6366f1' };
+  }
+  return { icon: '📎', badge: (ext || 'FILE').toUpperCase(), color: '#64748b' };
+}
+
+function getMentionSymbols() {
+  return [
+    { type: 'symbol', group: 'Emojis', label: 'Star (⭐)', icon: '⭐', insert: '⭐ ' },
+    { type: 'symbol', group: 'Emojis', label: 'Fire (🔥)', icon: '🔥', insert: '🔥 ' },
+    { type: 'symbol', group: 'Emojis', label: 'Idea / Lightbulb (💡)', icon: '💡', insert: '💡 ' },
+    { type: 'symbol', group: 'Emojis', label: 'Bolt / Lightning (⚡)', icon: '⚡', insert: '⚡ ' },
+    { type: 'symbol', group: 'Emojis', label: 'Rocket / Launch (🚀)', icon: '🚀', insert: '🚀 ' },
+    { type: 'symbol', group: 'Emojis', label: 'Pin / Urgent (📌)', icon: '📌', insert: '📌 ' },
+    { type: 'symbol', group: 'Emojis', label: 'Checkmark (✅)', icon: '✅', insert: '✅ ' },
+    { type: 'symbol', group: 'Emojis', label: 'Warning (⚠️)', icon: '⚠️', insert: '⚠️ ' },
+    { type: 'symbol', group: 'Emojis', label: 'Cross (❌)', icon: '❌', insert: '❌ ' },
+    { type: 'symbol', group: 'Emojis', label: 'Heart (❤️)', icon: '❤️', insert: '❤️ ' },
+    { type: 'symbol', group: 'Emojis', label: 'Target / Goal (🎯)', icon: '🎯', insert: '🎯 ' },
+    { type: 'symbol', group: 'Emojis', label: 'Bell / Alert (🔔)', icon: '🔔', insert: '🔔 ' },
+    { type: 'symbol', group: 'Emojis', label: 'Diamond (💎)', icon: '💎', insert: '💎 ' },
+    { type: 'symbol', group: 'Emojis', label: 'Folder (📁)', icon: '📁', insert: '📁 ' },
+    { type: 'symbol', group: 'Emojis', label: 'Attachment (📎)', icon: '📎', insert: '📎 ' },
+    { type: 'symbol', group: 'Emojis', label: 'Chat (💬)', icon: '💬', insert: '💬 ' },
+    { type: 'math', group: 'Math & Logic', label: 'Summation (∑)', icon: '∑', insert: '∑ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Product (∏)', icon: '∏', insert: '∏ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Pi (π)', icon: 'π', insert: 'π ' },
+    { type: 'math', group: 'Math & Logic', label: 'Infinity (∞)', icon: '∞', insert: '∞ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Square Root (√)', icon: '√', insert: '√ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Integral (∫)', icon: '∫', insert: '∫ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Delta (Δ)', icon: 'Δ', insert: 'Δ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Approx Equal (≈)', icon: '≈', insert: '≈ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Not Equal (≠)', icon: '≠', insert: '≠ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Less or Equal (≤)', icon: '≤', insert: '≤ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Greater or Equal (≥)', icon: '≥', insert: '≥ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Plus-Minus (±)', icon: '±', insert: '± ' },
+    { type: 'math', group: 'Math & Logic', label: 'Divide (÷)', icon: '÷', insert: '÷ ' },
+    { type: 'math', group: 'Math & Logic', label: 'Multiply (×)', icon: '×', insert: '× ' },
+    { type: 'arrow', group: 'Arrows', label: 'Right Arrow (→)', icon: '→', insert: '→ ' },
+    { type: 'arrow', group: 'Arrows', label: 'Left Arrow (←)', icon: '←', insert: '← ' },
+    { type: 'arrow', group: 'Arrows', label: 'Both Directions (↔)', icon: '↔', insert: '↔ ' },
+    { type: 'arrow', group: 'Arrows', label: 'Up Arrow (↑)', icon: '↑', insert: '↑ ' },
+    { type: 'arrow', group: 'Arrows', label: 'Down Arrow (↓)', icon: '↓', insert: '↓ ' },
+    { type: 'arrow', group: 'Arrows', label: 'Double / Implies (⇒)', icon: '⇒', insert: '⇒ ' },
+    { type: 'arrow', group: 'Arrows', label: 'Bold Arrow (➔)', icon: '➔', insert: '➔ ' },
+    { type: 'currency', group: 'Currencies', label: 'US Dollar ($)', icon: '$', insert: '$' },
+    { type: 'currency', group: 'Currencies', label: 'Euro (€)', icon: '€', insert: '€' },
+    { type: 'currency', group: 'Currencies', label: 'Pound (£)', icon: '£', insert: '£' },
+    { type: 'currency', group: 'Currencies', label: 'Yen (¥)', icon: '¥', insert: '¥' },
+    { type: 'currency', group: 'Currencies', label: 'Rupee (₹)', icon: '₹', insert: '₹' },
+    { type: 'currency', group: 'Currencies', label: 'Bitcoin (₿)', icon: '₿', insert: '₿' },
+    { type: 'person', group: 'Roles & Mentions', label: 'Me (@me)', icon: '👤', insert: '@me ' },
+    { type: 'person', group: 'Roles & Mentions', label: 'Team (@team)', icon: '👥', insert: '@team ' },
+    { type: 'person', group: 'Roles & Mentions', label: 'Review (@review)', icon: '🔍', insert: '@review ' },
+    { type: 'person', group: 'Roles & Mentions', label: 'Urgent (@urgent)', icon: '🚨', insert: '@urgent ' }
+  ];
+}
 
 class BlockEditor {
   constructor(container, options = {}) {
@@ -9,6 +109,8 @@ class BlockEditor {
     this.isReadOnly = options.isReadOnly || false;
     this.onUpdate = options.onUpdate || (() => {});
     this.slashMenuIndex = 0;
+    this.mentionMenuIndex = 0;
+    this.mentionState = null;
     this.activeBlockId = null;
 
     this.slashOptions = [
@@ -17,6 +119,12 @@ class BlockEditor {
       { type: 'heading', level: 2, label: 'Heading 2', desc: 'Medium section heading.', icon: 'H2' },
       { type: 'heading', level: 3, label: 'Heading 3', desc: 'Small section heading.', icon: 'H3' },
       { type: 'todo', label: 'To-do List', desc: 'Track tasks with a to-do list.', icon: '☑️' },
+      { type: 'file', label: 'File Attachment', desc: 'Attach any document or file (PDF, Word, Excel, ZIP, etc.).', icon: '📎' },
+      { type: 'pdf', label: 'PDF Document Viewer', desc: 'Embed an interactive PDF reader in your note.', icon: '📕' },
+      { type: 'image', label: 'Image', desc: 'Embed or upload photos from device.', icon: '🖼️' },
+      { type: 'diagram', label: 'Diagram / Flowchart', desc: 'Interactive flowchart, sequence, or mindmap.', icon: '📊' },
+      { type: 'sticky', label: 'Sticky Note', desc: 'Colorful sticky note with quick thoughts.', icon: '📌' },
+      { type: 'chat', label: 'Saved Message / Chat', desc: 'Telegram / WhatsApp style message bubble.', icon: '💬' },
       { type: 'bullet', label: 'Bulleted List', desc: 'Create a simple bulleted list.', icon: '•' },
       { type: 'number', label: 'Numbered List', desc: 'Create a list with numbering.', icon: '1.' },
       { type: 'toggle', label: 'Toggle List', desc: 'Toggles can hide and show content.', icon: '▶' },
@@ -25,7 +133,6 @@ class BlockEditor {
       { type: 'code', label: 'Code Block', desc: 'Capture a code snippet with formatting.', icon: '💻' },
       { type: 'math', label: 'Math Equation', desc: 'Render mathematical TeX expressions.', icon: '√x' },
       { type: 'divider', label: 'Divider', desc: 'Visually divide blocks.', icon: '—' },
-      { type: 'image', label: 'Image', desc: 'Embed with a link or upload.', icon: '🖼️' },
       { type: 'toc', label: 'Table of Contents', desc: 'Auto-generated outline of page headings.', icon: '📑' },
       { type: 'table', label: 'Simple Table', desc: '2D grid table with custom rows and columns.', icon: '⊞' },
       { type: 'bookmark', label: 'Web Bookmark', desc: 'Visual link preview card.', icon: '🔗' },
@@ -115,7 +222,7 @@ class BlockEditor {
       const delBtn = document.createElement('button');
       delBtn.className = 'tool-btn del-btn';
       delBtn.innerHTML = '✕';
-      const typeLabel = block.type === 'audio' ? 'voice memo' : (block.type === 'image' ? 'image' : 'block');
+      const typeLabel = block.type === 'audio' ? 'voice memo' : (block.type === 'image' ? 'image' : (block.type === 'file' ? 'file' : (block.type === 'pdf' ? 'PDF' : 'block')));
       delBtn.title = `Delete this ${typeLabel}`;
       delBtn.onclick = (e) => {
         e.stopPropagation();
@@ -366,7 +473,7 @@ class BlockEditor {
             clearImgBtn.title = 'Clear image attachment';
             clearImgBtn.onclick = (e) => {
               e.stopPropagation();
-              this.store.updateBlock(this.pageId, block.id, { url: '' });
+              this.store.updateBlock(this.pageId, block.id, { url: '', alt: '' });
               this.render();
             };
 
@@ -392,17 +499,43 @@ class BlockEditor {
 
           const urlInput = document.createElement('input');
           urlInput.className = 'image-url-input';
-          urlInput.placeholder = 'Paste Image URL (or data URI)...';
-          urlInput.value = block.url || '';
+          urlInput.placeholder = 'Paste Image URL (or upload below)...';
+          urlInput.value = block.url && !block.url.startsWith('data:') ? block.url : '';
           urlInput.onchange = () => {
             this.store.updateBlock(this.pageId, block.id, { url: urlInput.value });
             this.render();
           };
           inputRow.appendChild(urlInput);
 
+          const uploadBtn = document.createElement('button');
+          uploadBtn.className = 'btn-image-upload';
+          uploadBtn.innerHTML = '📷 Upload Photo';
+          uploadBtn.title = 'Upload photo from device';
+
+          const imgFileInput = document.createElement('input');
+          imgFileInput.type = 'file';
+          imgFileInput.accept = 'image/*';
+          imgFileInput.style.display = 'none';
+          imgFileInput.onchange = (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            const r = new FileReader();
+            r.onload = () => {
+              this.store.updateBlock(this.pageId, block.id, { url: r.result, alt: f.name });
+              this.render();
+            };
+            r.readAsDataURL(f);
+          };
+          uploadBtn.onclick = (e) => {
+            e.stopPropagation();
+            imgFileInput.click();
+          };
+          inputRow.appendChild(uploadBtn);
+          inputRow.appendChild(imgFileInput);
+
           const delBtn = document.createElement('button');
           delBtn.className = 'btn-image-delete';
-          delBtn.innerHTML = '✕ Delete Block';
+          delBtn.innerHTML = '✕ Delete';
           delBtn.title = 'Remove image block';
           delBtn.onclick = (e) => {
             e.stopPropagation();
@@ -414,6 +547,222 @@ class BlockEditor {
           imgWrap.appendChild(inputRow);
         }
         content.appendChild(imgWrap);
+        break;
+      }
+
+      case 'file':
+      case 'pdf': {
+        const fileWrap = document.createElement('div');
+        fileWrap.className = 'af-file-block';
+
+        const meta = getFileMeta(block.fileName, block.fileType || (block.type === 'pdf' ? 'application/pdf' : ''));
+        const hasFile = Boolean(block.url);
+
+        if (hasFile) {
+          const card = document.createElement('div');
+          card.className = 'af-file-card';
+
+          const cardLeft = document.createElement('div');
+          cardLeft.className = 'file-card-left';
+          cardLeft.innerHTML = `
+            <div class="file-card-icon" style="background:${meta.color}18; color:${meta.color};">${meta.icon}</div>
+            <div class="file-card-info">
+              <div class="file-card-title" title="${block.fileName || 'Attachment'}">${block.fileName || (block.type === 'pdf' ? 'PDF Document' : 'Document Attachment')}</div>
+              <div class="file-card-sub">
+                <span class="file-badge-pill" style="background:${meta.color}20; color:${meta.color}; border:1px solid ${meta.color}40;">${meta.badge}</span>
+                <span class="file-size-tag">${formatFileSize(block.fileSize)}</span>
+              </div>
+            </div>
+          `;
+
+          const cardActions = document.createElement('div');
+          cardActions.className = 'file-card-actions';
+
+          // Download action
+          const downloadBtn = document.createElement('a');
+          downloadBtn.className = 'btn-file-act btn-file-download';
+          downloadBtn.href = block.url;
+          downloadBtn.download = block.fileName || (block.type === 'pdf' ? 'document.pdf' : 'attachment');
+          downloadBtn.innerHTML = '📥 Download';
+          downloadBtn.title = 'Download file';
+          cardActions.appendChild(downloadBtn);
+
+          // Preview toggle (for PDF or image)
+          if (meta.isPdf || meta.isImage || block.type === 'pdf') {
+            const previewBtn = document.createElement('button');
+            previewBtn.className = 'btn-file-act';
+            const isPreviewOpen = block.showPreview !== false;
+            previewBtn.innerHTML = isPreviewOpen ? '👁️ Collapse' : '👁️ Preview';
+            previewBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.store.updateBlock(this.pageId, block.id, { showPreview: !isPreviewOpen });
+              this.render();
+            };
+            cardActions.appendChild(previewBtn);
+          }
+
+          if (!this.isReadOnly) {
+            // Replace action
+            const replaceBtn = document.createElement('button');
+            replaceBtn.className = 'btn-file-act';
+            replaceBtn.innerHTML = '🔄 Replace';
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.style.display = 'none';
+            if (block.type === 'pdf') fileInput.accept = 'application/pdf,.pdf';
+            fileInput.onchange = (e) => {
+              const file = e.target.files && e.target.files[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                this.store.updateBlock(this.pageId, block.id, {
+                  url: reader.result,
+                  fileName: file.name,
+                  fileSize: file.size,
+                  fileType: file.type,
+                  updatedAt: Date.now()
+                });
+                this.render();
+              };
+              reader.readAsDataURL(file);
+            };
+            replaceBtn.onclick = (e) => {
+              e.stopPropagation();
+              fileInput.click();
+            };
+            cardActions.appendChild(replaceBtn);
+            cardActions.appendChild(fileInput);
+
+            // Clear file action
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'btn-file-act text-danger';
+            clearBtn.innerHTML = '🗑️ Clear';
+            clearBtn.title = 'Remove attached file';
+            clearBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.store.updateBlock(this.pageId, block.id, { url: '', fileName: '', fileSize: 0, fileType: '' });
+              this.render();
+            };
+            cardActions.appendChild(clearBtn);
+
+            // Delete block action
+            const delBlockBtn = document.createElement('button');
+            delBlockBtn.className = 'btn-file-act text-danger';
+            delBlockBtn.innerHTML = '✕ Delete Block';
+            delBlockBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.store.removeBlock(this.pageId, block.id);
+              this.render();
+            };
+            cardActions.appendChild(delBlockBtn);
+          }
+
+          card.appendChild(cardLeft);
+          card.appendChild(cardActions);
+          fileWrap.appendChild(card);
+
+          // Inline preview if enabled
+          const showPreview = block.showPreview !== false;
+          if (showPreview) {
+            if (meta.isPdf || block.type === 'pdf') {
+              const pdfPreview = document.createElement('div');
+              pdfPreview.className = 'file-inline-preview pdf-preview-container';
+              pdfPreview.innerHTML = `
+                <div class="pdf-viewer-bar">
+                  <span>📕 <strong>PDF Reader:</strong> ${block.fileName || 'Document'}</span>
+                  <button class="btn-pdf-external" title="Open in new window">↗ Fullscreen</button>
+                </div>
+                <iframe class="inline-pdf-frame" src="${block.url}" title="${block.fileName || 'PDF'}"></iframe>
+              `;
+              pdfPreview.querySelector('.btn-pdf-external').onclick = () => {
+                const w = window.open();
+                w.document.write(`<iframe src="${block.url}" style="width:100%;height:100%;border:none;"></iframe>`);
+              };
+              fileWrap.appendChild(pdfPreview);
+            } else if (meta.isImage) {
+              const imgPreview = document.createElement('div');
+              imgPreview.className = 'file-inline-preview img-preview-container';
+              imgPreview.innerHTML = `<img src="${block.url}" alt="${block.fileName || 'Preview'}" class="file-img-preview" />`;
+              fileWrap.appendChild(imgPreview);
+            }
+          }
+        } else if (!this.isReadOnly) {
+          const dropzone = document.createElement('div');
+          dropzone.className = 'af-file-dropzone';
+          const isPdfOnly = block.type === 'pdf';
+
+          dropzone.innerHTML = `
+            <div class="dropzone-icon">${isPdfOnly ? '📕' : '📎'}</div>
+            <div class="dropzone-text">
+              <strong>${isPdfOnly ? 'Add PDF Document' : 'Attach Document or File'}</strong>
+              <span>${isPdfOnly ? 'Drag & drop a PDF here, or click to browse' : 'Drag & drop any file here, or click to browse'}</span>
+              <span class="dropzone-supported">${isPdfOnly ? 'Accepts .pdf files' : 'Supports PDF, Word, Excel, PowerPoint, ZIP, Code, & all formats'}</span>
+            </div>
+            <div class="dropzone-actions">
+              <button class="btn-browse-file" type="button">${isPdfOnly ? '📂 Browse PDF' : '📂 Browse Files'}</button>
+              <button class="btn-del-dropzone" type="button" title="Remove block">✕</button>
+            </div>
+          `;
+
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.style.display = 'none';
+          if (isPdfOnly) fileInput.accept = 'application/pdf,.pdf';
+
+          const handleFile = (file) => {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              this.store.updateBlock(this.pageId, block.id, {
+                url: reader.result,
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type,
+                updatedAt: Date.now()
+              });
+              this.render();
+            };
+            reader.readAsDataURL(file);
+          };
+
+          fileInput.onchange = (e) => {
+            handleFile(e.target.files && e.target.files[0]);
+          };
+
+          dropzone.ondragover = (e) => {
+            e.preventDefault();
+            dropzone.classList.add('is-dragging');
+          };
+          dropzone.ondragleave = (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('is-dragging');
+          };
+          dropzone.ondrop = (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('is-dragging');
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+              handleFile(e.dataTransfer.files[0]);
+            }
+          };
+
+          dropzone.querySelector('.btn-browse-file').onclick = (e) => {
+            e.stopPropagation();
+            fileInput.click();
+          };
+          dropzone.onclick = () => fileInput.click();
+          dropzone.querySelector('.btn-del-dropzone').onclick = (e) => {
+            e.stopPropagation();
+            this.store.removeBlock(this.pageId, block.id);
+            this.render();
+          };
+
+          dropzone.appendChild(fileInput);
+          fileWrap.appendChild(dropzone);
+        } else {
+          fileWrap.innerHTML = '<div class="empty-file-block">No file attached</div>';
+        }
+
+        content.appendChild(fileWrap);
         break;
       }
 
@@ -598,6 +947,20 @@ class BlockEditor {
           audioEl.controls = true;
           audioEl.src = block.src;
           playerArea.appendChild(audioEl);
+
+          const speedBtn = document.createElement('button');
+          speedBtn.className = 'btn-audio-speed';
+          speedBtn.textContent = '1x';
+          speedBtn.title = 'WhatsApp style playback speed (1x, 1.5x, 2x)';
+          speedBtn.onclick = (e) => {
+            e.stopPropagation();
+            const speeds = [1, 1.5, 2];
+            const curr = audioEl.playbackRate || 1;
+            const next = speeds[(speeds.indexOf(curr) + 1) % speeds.length];
+            audioEl.playbackRate = next;
+            speedBtn.textContent = `${next}x`;
+          };
+          playerArea.appendChild(speedBtn);
         } else {
           const placeholder = document.createElement('div');
           placeholder.className = 'audio-placeholder';
@@ -782,6 +1145,225 @@ class BlockEditor {
         break;
       }
 
+      case 'diagram': {
+        const diagWrap = document.createElement('div');
+        diagWrap.className = 'af-diagram-block';
+
+        const dType = block.diagramType || 'flowchart';
+        const dTitle = block.title || 'System Flowchart';
+        const steps = Array.isArray(block.steps) && block.steps.length > 0 ? block.steps : [
+          { label: 'Start Request', color: '#3b82f6' },
+          { label: 'Process & Validate', color: '#8b5cf6' },
+          { label: 'Decision Check', color: '#f59e0b', isDecision: true },
+          { label: 'Save & Success', color: '#10b981' }
+        ];
+
+        const topBar = document.createElement('div');
+        topBar.className = 'diag-top-bar';
+        topBar.innerHTML = `
+          <div class="diag-title-area">
+            <span>📊</span>
+            <input class="diag-title-input" value="${dTitle}" placeholder="Diagram title..." ${this.isReadOnly ? 'disabled' : ''} />
+          </div>
+          <div class="diag-actions">
+            <select class="diag-type-select" ${this.isReadOnly ? 'disabled' : ''}>
+              <option value="flowchart" ${dType === 'flowchart' ? 'selected' : ''}>Flowchart</option>
+              <option value="sequence" ${dType === 'sequence' ? 'selected' : ''}>Sequence</option>
+              <option value="mindmap" ${dType === 'mindmap' ? 'selected' : ''}>Mindmap</option>
+            </select>
+            ${!this.isReadOnly ? `
+              <button class="btn-diag-act btn-add-step">+ Add Step</button>
+              <button class="btn-diag-act text-danger btn-del-diag">✕</button>
+            ` : ''}
+          </div>
+        `;
+
+        const svgContainer = document.createElement('div');
+        svgContainer.className = 'diag-svg-container';
+
+        const nodeWidth = 130;
+        const nodeHeight = 44;
+        const gap = 36;
+        const svgWidth = Math.max(500, steps.length * (nodeWidth + gap) + 40);
+        const svgHeight = 110;
+
+        let svgMarkup = `<svg viewBox="0 0 ${svgWidth} ${svgHeight}" width="100%" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow-${block.id}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#94a3b8" />
+            </marker>
+          </defs>`;
+
+        steps.forEach((st, i) => {
+          const x = 30 + i * (nodeWidth + gap);
+          const y = 32;
+          const bg = st.color || '#3b82f6';
+
+          if (st.isDecision) {
+            svgMarkup += `
+              <polygon points="${x + nodeWidth/2},${y - 4} ${x + nodeWidth + 6},${y + nodeHeight/2} ${x + nodeWidth/2},${y + nodeHeight + 4} ${x - 6},${y + nodeHeight/2}" fill="${bg}" fill-opacity="0.15" stroke="${bg}" stroke-width="2" />
+            `;
+          } else {
+            svgMarkup += `
+              <rect x="${x}" y="${y}" width="${nodeWidth}" height="${nodeHeight}" rx="8" fill="${bg}" fill-opacity="0.15" stroke="${bg}" stroke-width="1.8" />
+            `;
+          }
+
+          svgMarkup += `
+            <text x="${x + nodeWidth/2}" y="${y + nodeHeight/2 + 4}" fill="currentColor" font-size="12" font-weight="600" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">${st.label}</text>
+          `;
+
+          if (i < steps.length - 1) {
+            const lineStartX = x + nodeWidth + (st.isDecision ? 6 : 0);
+            const lineEndX = lineStartX + gap - (steps[i+1].isDecision ? 6 : 0);
+            const lineY = y + nodeHeight/2;
+            svgMarkup += `
+              <line x1="${lineStartX}" y1="${lineY}" x2="${lineEndX}" y2="${lineY}" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow-${block.id})" />
+            `;
+          }
+        });
+        svgMarkup += `</svg>`;
+        svgContainer.innerHTML = svgMarkup;
+
+        diagWrap.appendChild(topBar);
+        diagWrap.appendChild(svgContainer);
+
+        if (!this.isReadOnly) {
+          const titleInp = topBar.querySelector('.diag-title-input');
+          titleInp.onchange = () => {
+            this.store.updateBlock(this.pageId, block.id, { title: titleInp.value });
+          };
+          const typeSel = topBar.querySelector('.diag-type-select');
+          typeSel.onchange = () => {
+            this.store.updateBlock(this.pageId, block.id, { diagramType: typeSel.value });
+            this.render();
+          };
+          topBar.querySelector('.btn-add-step').onclick = () => {
+            const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+            const nextColor = colors[steps.length % colors.length];
+            const newLabel = prompt('Enter step label:', `Step ${steps.length + 1}`);
+            if (newLabel) {
+              steps.push({ label: newLabel, color: nextColor });
+              this.store.updateBlock(this.pageId, block.id, { steps });
+              this.render();
+            }
+          };
+          topBar.querySelector('.btn-del-diag').onclick = () => {
+            this.store.removeBlock(this.pageId, block.id);
+            this.render();
+          };
+        }
+
+        content.appendChild(diagWrap);
+        break;
+      }
+
+      case 'sticky': {
+        const stickyWrap = document.createElement('div');
+        stickyWrap.className = 'af-sticky-block';
+        const color = block.color || '#fef08a';
+        stickyWrap.style.backgroundColor = color;
+
+        stickyWrap.innerHTML = `
+          <div class="sticky-pin">📌</div>
+          <div class="sticky-controls">
+            ${!this.isReadOnly ? `
+              <div class="sticky-palettes">
+                ${['#fef08a', '#fbcfe8', '#bae6fd', '#bbf7d0', '#fed7aa', '#e9d5ff'].map(c => `
+                  <button class="sticky-dot" style="background:${c};" data-color="${c}" title="Change color"></button>
+                `).join('')}
+              </div>
+              <button class="btn-del-sticky" title="Delete sticky note">✕</button>
+            ` : ''}
+          </div>
+          <div class="sticky-body" contenteditable="${!this.isReadOnly}" data-placeholder="Write a sticky note...">${block.text || ''}</div>
+        `;
+
+        if (!this.isReadOnly) {
+          const bodyEl = stickyWrap.querySelector('.sticky-body');
+          bodyEl.oninput = () => {
+            block.text = bodyEl.textContent;
+            this.store.updateBlock(this.pageId, block.id, { text: block.text });
+            this.onUpdate();
+          };
+
+          stickyWrap.querySelectorAll('.sticky-dot').forEach(dot => {
+            dot.onclick = (e) => {
+              e.stopPropagation();
+              const c = dot.dataset.color;
+              this.store.updateBlock(this.pageId, block.id, { color: c });
+              this.render();
+            };
+          });
+
+          stickyWrap.querySelector('.btn-del-sticky').onclick = (e) => {
+            e.stopPropagation();
+            this.store.removeBlock(this.pageId, block.id);
+            this.render();
+          };
+        }
+
+        content.appendChild(stickyWrap);
+        break;
+      }
+
+      case 'chat': {
+        const chatWrap = document.createElement('div');
+        chatWrap.className = 'af-chat-block';
+
+        const sender = block.sender || 'me';
+        const time = block.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        chatWrap.innerHTML = `
+          <div class="chat-bubble ${sender}">
+            <div class="chat-bubble-head">
+              <span class="chat-sender-tag">👤 ${sender === 'me' ? 'Saved Note' : sender}</span>
+              <span class="chat-time-tag">${time}</span>
+            </div>
+            <div class="chat-text-body" contenteditable="${!this.isReadOnly}" data-placeholder="Type message note...">${block.text || ''}</div>
+            <div class="chat-footer">
+              <span class="chat-receipt" title="Saved locally">✓✓</span>
+              ${!this.isReadOnly ? `
+                <div class="chat-actions">
+                  <button class="btn-chat-action btn-add-chat-below" title="Append chat note below">+ Reply</button>
+                  <button class="btn-chat-action text-danger btn-del-chat" title="Delete message">✕</button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+
+        if (!this.isReadOnly) {
+          const bodyEl = chatWrap.querySelector('.chat-text-body');
+          bodyEl.oninput = () => {
+            block.text = bodyEl.textContent;
+            this.store.updateBlock(this.pageId, block.id, { text: block.text });
+            this.onUpdate();
+          };
+
+          chatWrap.querySelector('.btn-add-chat-below').onclick = (e) => {
+            e.stopPropagation();
+            const newChat = {
+              type: 'chat',
+              sender: 'me',
+              text: '',
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            this.store.insertBlock(this.pageId, newChat, index + 1);
+            this.render();
+          };
+
+          chatWrap.querySelector('.btn-del-chat').onclick = (e) => {
+            e.stopPropagation();
+            this.store.removeBlock(this.pageId, block.id);
+            this.render();
+          };
+        }
+
+        content.appendChild(chatWrap);
+        break;
+      }
+
       default: {
         const defP = document.createElement('p');
         this.makeEditable(defP, block, 'text');
@@ -879,6 +1461,19 @@ class BlockEditor {
 
       this.store.updateBlock(this.pageId, block.id, { [key]: text });
 
+      // Check for @ Mention / Symbol trigger
+      const lastAt = text.lastIndexOf('@');
+      if (lastAt !== -1 && (lastAt === 0 || /\s/.test(text[lastAt - 1]))) {
+        const query = text.slice(lastAt + 1);
+        if (!/\s/.test(query)) {
+          this.showMentionMenu(el, block, query, lastAt);
+        } else {
+          this.hideMentionMenu();
+        }
+      } else {
+        this.hideMentionMenu();
+      }
+
       // Check for Slash Command popup trigger
       if (text.endsWith('/')) {
         this.showSlashMenu(el, block);
@@ -889,6 +1484,26 @@ class BlockEditor {
     };
 
     el.onkeydown = (e) => {
+      // Mention menu arrow & enter navigation
+      if (this.isMentionMenuVisible()) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          this.navigateMentionMenu(1);
+          return;
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          this.navigateMentionMenu(-1);
+          return;
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          this.executeSelectedMention();
+          return;
+        } else if (e.key === 'Escape') {
+          this.hideMentionMenu();
+          return;
+        }
+      }
+
       // Enter key
       if (e.key === 'Enter' && !e.shiftKey) {
         if (this.isSlashMenuVisible()) {
@@ -946,6 +1561,120 @@ class BlockEditor {
         }
       }
     };
+  }
+
+  showMentionMenu(el, block, query = '', atIndex = 0) {
+    this.hideSlashMenu();
+    this.mentionState = { el, block, query, atIndex };
+    let popup = document.getElementById('af-mention-popup');
+    if (!popup) {
+      popup = document.createElement('div');
+      popup.id = 'af-mention-popup';
+      popup.className = 'af-mention-popup';
+      document.body.appendChild(popup);
+    }
+
+    const rect = el.getBoundingClientRect();
+    popup.style.position = 'fixed';
+    popup.style.top = `${rect.bottom + 6}px`;
+    popup.style.left = `${Math.min(rect.left, window.innerWidth - 300)}px`;
+
+    const pages = Object.values(this.store.data.pages || {})
+      .filter(p => !p.inTrash)
+      .map(p => ({
+        type: 'page',
+        group: 'Pages & Documents',
+        label: p.title || 'Untitled',
+        icon: p.icon || (p.type === 'folder' ? '📁' : '📄'),
+        insert: `@${p.title} `
+      }));
+
+    const dates = [
+      { type: 'date', group: 'Dates & Time', label: 'Today', icon: '📅', insert: new Date().toLocaleDateString() + ' ' },
+      { type: 'date', group: 'Dates & Time', label: 'Tomorrow', icon: '☀️', insert: new Date(Date.now() + 86400000).toLocaleDateString() + ' ' },
+      { type: 'date', group: 'Dates & Time', label: 'Current Time', icon: '⏰', insert: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' }
+    ];
+
+    const all = [...pages, ...dates, ...getMentionSymbols()];
+    const q = (query || '').toLowerCase();
+    const filtered = q
+      ? all.filter(it => it.label.toLowerCase().includes(q) || it.insert.toLowerCase().includes(q) || (it.group && it.group.toLowerCase().includes(q)))
+      : all;
+
+    if (filtered.length === 0) {
+      this.hideMentionMenu();
+      return;
+    }
+
+    this.filteredMentions = filtered;
+    this.mentionMenuIndex = Math.min(this.mentionMenuIndex, filtered.length - 1);
+    if (this.mentionMenuIndex < 0) this.mentionMenuIndex = 0;
+
+    popup.innerHTML = `
+      <div class="mention-menu-header">@ MENTIONS & SYMBOLS (${filtered.length})</div>
+      <div class="mention-menu-list">
+        ${filtered.slice(0, 30).map((it, idx) => `
+          <div class="mention-item ${idx === this.mentionMenuIndex ? 'is-selected' : ''}" data-idx="${idx}">
+            <span class="mention-icon">${it.icon}</span>
+            <div class="mention-info">
+              <span class="mention-label">${it.label}</span>
+              <span class="mention-group">${it.group || 'Symbol'}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    popup.querySelectorAll('.mention-item').forEach(itemEl => {
+      itemEl.onmousedown = (ev) => {
+        ev.preventDefault();
+        const idx = parseInt(itemEl.dataset.idx, 10);
+        this.selectMentionItem(this.filteredMentions[idx]);
+      };
+    });
+  }
+
+  navigateMentionMenu(direction) {
+    if (!this.filteredMentions || this.filteredMentions.length === 0) return;
+    this.mentionMenuIndex = (this.mentionMenuIndex + direction + this.filteredMentions.length) % this.filteredMentions.length;
+    const popup = document.getElementById('af-mention-popup');
+    if (!popup) return;
+    const items = popup.querySelectorAll('.mention-item');
+    items.forEach((it, idx) => it.classList.toggle('is-selected', idx === this.mentionMenuIndex));
+    if (items[this.mentionMenuIndex]) items[this.mentionMenuIndex].scrollIntoView({ block: 'nearest' });
+  }
+
+  executeSelectedMention() {
+    if (this.filteredMentions && this.filteredMentions[this.mentionMenuIndex]) {
+      this.selectMentionItem(this.filteredMentions[this.mentionMenuIndex]);
+    }
+  }
+
+  selectMentionItem(item) {
+    if (!item || !this.mentionState) return;
+    const { el, block, atIndex } = this.mentionState;
+    const txt = el.textContent || '';
+    const before = txt.slice(0, atIndex);
+    const afterAt = txt.slice(atIndex);
+    const firstSpace = afterAt.indexOf(' ');
+    const after = firstSpace === -1 ? '' : afterAt.slice(firstSpace);
+
+    const newText = before + item.insert + after;
+    el.textContent = newText;
+    block.text = newText;
+    this.store.updateBlock(this.pageId, block.id, { text: newText });
+    this.hideMentionMenu();
+    this.onUpdate();
+  }
+
+  hideMentionMenu() {
+    const el = document.getElementById('af-mention-popup');
+    if (el) el.remove();
+    this.mentionState = null;
+  }
+
+  isMentionMenuVisible() {
+    return Boolean(document.getElementById('af-mention-popup'));
   }
 
   // Slash Command Menu
@@ -1073,6 +1802,41 @@ class BlockEditor {
       update.text = 'Key excerpt or quote from the clipped webpage.';
       update.date = new Date().toLocaleDateString();
     }
+    if (opt.type === 'file') {
+      update.type = 'file';
+      update.url = '';
+      update.fileName = '';
+      update.fileSize = 0;
+    }
+    if (opt.type === 'pdf') {
+      update.type = 'pdf';
+      update.url = '';
+      update.fileName = '';
+      update.fileSize = 0;
+      update.fileType = 'application/pdf';
+    }
+    if (opt.type === 'diagram') {
+      update.type = 'diagram';
+      update.diagramType = 'flowchart';
+      update.title = 'Process Flowchart';
+      update.steps = [
+        { label: 'Start', color: '#3b82f6' },
+        { label: 'Process', color: '#8b5cf6' },
+        { label: 'Decision', color: '#f59e0b', isDecision: true },
+        { label: 'Success', color: '#10b981' }
+      ];
+    }
+    if (opt.type === 'sticky') {
+      update.type = 'sticky';
+      update.color = '#fef08a';
+      update.text = '📌 Important Idea: Jot down key points here.';
+    }
+    if (opt.type === 'chat') {
+      update.type = 'chat';
+      update.sender = 'me';
+      update.text = 'Saved message note...';
+      update.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
     if (opt.type === 'columns') {
       const count = opt.columnsCount || 2;
       update.type = 'columns';
@@ -1131,13 +1895,21 @@ class BlockEditor {
         }
       },
       {
-        label: block.type === 'audio' ? 'Delete Voice Memo' : (block.type === 'image' ? 'Delete Image' : 'Delete Block'),
+        label: block.type === 'audio' ? 'Delete Voice Memo' : (block.type === 'image' ? 'Delete Image' : (block.type === 'file' ? 'Delete File' : (block.type === 'pdf' ? 'Delete PDF' : (block.type === 'diagram' ? 'Delete Diagram' : (block.type === 'sticky' ? 'Delete Sticky Note' : (block.type === 'chat' ? 'Delete Chat Message' : 'Delete Block')))))),
         icon: '🗑️',
         action: () => {
           this.store.removeBlock(this.pageId, block.id);
           this.render();
         }
       },
+      ...((block.type === 'file' || block.type === 'pdf') && block.url ? [{
+        label: 'Clear Attached File',
+        icon: '🧹',
+        action: () => {
+          this.store.updateBlock(this.pageId, block.id, { url: '', fileName: '', fileSize: 0 });
+          this.render();
+        }
+      }] : []),
       ...(block.type === 'audio' && block.src ? [{
         label: 'Clear Voice Recording',
         icon: '🧹',
@@ -1197,5 +1969,6 @@ class BlockEditor {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { BlockEditor };
+  module.exports = { BlockEditor, formatFileSize, getFileMeta, getMentionSymbols };
 }
+
