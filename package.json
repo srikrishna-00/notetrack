@@ -16,7 +16,8 @@
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
     "cap:ios": "npx cap open ios",
-    "build:android": "npx cap copy android"
+    "build:android": "npx cap copy android",
+    "android:sim": "electron scripts/open-android-simulator.js"
   },
   "build": {
     "appId": "com.notetrack.app",

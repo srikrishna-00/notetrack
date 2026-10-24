@@ -30,6 +30,10 @@ class AppShell {
     if (page && page.spaceId) {
       this.activeSpaceId = page.spaceId;
     }
+    const sidebar = document.getElementById('af-sidebar');
+    if (sidebar && typeof window !== 'undefined' && window.innerWidth <= 768) {
+      sidebar.classList.remove('is-mobile-open');
+    }
     this.updateTabs();
     this.updateSidebar();
     this.updateHeader();

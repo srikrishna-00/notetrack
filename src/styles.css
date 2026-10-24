@@ -2350,18 +2350,29 @@ body {
   .af-columns-layout {
     grid-template-columns: 1fr !important;
   }
-  .app-sidebar {
-    position: fixed;
+  .af-tabs-strip {
+    display: none !important;
+  }
+  .af-sidebar, .app-sidebar {
+    position: fixed !important;
     z-index: 100;
     left: -280px;
     top: 0;
-    bottom: 0;
+    bottom: 54px;
     width: 280px;
     transition: left 0.25s ease;
-    box-shadow: 4px 0 16px rgba(0,0,0,0.25);
+    box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+    background-color: var(--bg-secondary);
   }
-  .app-sidebar.is-mobile-open {
-    left: 0;
+  .af-sidebar.is-mobile-open, .app-sidebar.is-mobile-open {
+    left: 0 !important;
+  }
+  .af-main-viewport {
+    width: 100vw;
+    min-width: 100vw;
+  }
+  .af-page-scrollable {
+    padding-bottom: 70px;
   }
   .mobile-bottom-nav {
     display: flex !important;
@@ -2375,6 +2386,17 @@ body {
     z-index: 90;
     justify-content: space-around;
     align-items: center;
+  }
+  .mobile-bottom-nav .nav-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 6px 12px;
+  }
+  .mobile-bottom-nav .nav-btn:active {
+    transform: scale(0.92);
   }
   .version-history-modal {
     flex-direction: column;
