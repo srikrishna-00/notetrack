@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NoteTrack — Android Mobile Device Simulator</title>
+  <style>
+    :root {
+      --bg: #0b0d13;
+      --card-bg: #151821;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+      --phone-border: #2d3345;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 16px 20px 40px;
+      overflow-x: hidden;
+    }
+
+    /* Top Controls Bar */
+    .controls-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      padding: 10px 18px;
+      border-radius: 14px;
+      border: 1px solid var(--phone-border);
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+    }
+    .brand-title .badge {
+      background: rgba(99, 102, 241, 0.2);
+      color: var(--accent);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .device-switcher {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .device-btn {
+      background: transparent;
+      border: 1px solid var(--phone-border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    .device-btn:hover {
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+    }
+    .device-btn.is-active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Smartphone Physical Bezel Frame */
+    .phone-stage {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      perspective: 1000px;
+    }
+
+    .phone-chassis {
+      position: relative;
+      width: 412px;
+      height: 870px;
+      background: #181b24;
+      border-radius: 46px;
+      border: 10px solid #282c3c;
+      box-shadow:
+        0 25px 60px -15px rgba(0, 0, 0, 0.75),
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 0 0 2px #0f1118;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s ease, height 0.3s ease;
+    }
+
+    /* Hardware Buttons on Phone Edges */
+    .phone-btn-power {
+      position: absolute;
+      right: -13px;
+      top: 170px;
+      width: 4px;
+      height: 48px;
+      background: #3a4155;
+      border-radius: 0 3px 3px 0;
+    }
+    .phone-btn-vol-up {
+      position: absolute;
+      left: -13px;
+      top: 150px;
+      width: 4px;
+      height: 42px;
+      background: #3a4155;
+      border-radius: 3px 0 0 3px;
+    }
+    .phone-btn-vol-down {
+      position: absolute;
+      left: -13px;
+      top: 202px;
+      width: 4px;
+      height: 42px;
+      background: #3a4155;
+      border-radius: 3px 0 0 3px;
+    }
+
+    /* Android Status Bar */
+    .android-status-bar {
+      height: 28px;
+      background: #12141a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #e2e8f0;
+      user-select: none;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .camera-punchhole {
+      width: 12px;
+      height: 12px;
+      background: #000;
+      border-radius: 50%;
+      border: 1px solid #1a1e28;
+      box-shadow: inset 0 0 2px #333;
+    }
+
+    .status-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+    }
+
+    /* Phone Screen Viewport */
+    .phone-screen {
+      flex: 1;
+      width: 100%;
+      background: #12141a;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: transparent;
+    }
+
+    /* Android Gesture Navigation Pill at Bottom */
+    .android-nav-gesture {
+      height: 16px;
+      background: #12141a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .gesture-pill {
+      width: 80px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Simulator Bar -->
+  <header class="controls-header">
+    <div class="brand-title">
+      <span>📱 NoteTrack</span>
+      <span class="badge">Android Simulator</span>
+    </div>
+    <div class="device-switcher">
+      <button class="device-btn is-active" data-w="412" data-h="870" data-name="Google Pixel 8">Pixel 8</button>
+      <button class="device-btn" data-w="390" data-h="844" data-name="Galaxy S24">Galaxy S24</button>
+      <button class="device-btn" data-w="360" data-h="780" data-name="Compact Android">Compact (360px)</button>
+      <button class="device-btn" data-w="768" data-h="870" data-name="Android Tablet">Tablet (768px)</button>
+      <button class="device-btn" id="btn-refresh" title="Reload app">🔄</button>
+    </div>
+  </header>
+
+  <!-- Smartphone Physical Bezel Frame -->
+  <div class="phone-stage">
+    <div class="phone-btn-vol-up"></div>
+    <div class="phone-btn-vol-down"></div>
+    <div class="phone-btn-power"></div>
+
+    <div class="phone-chassis" id="phone-chassis">
+      <!-- Android Status Bar -->
+      <div class="android-status-bar">
+        <div class="status-left">
+          <span id="live-time">12:30</span>
+        </div>
+        <div class="camera-punchhole"></div>
+        <div class="status-right">
+          <span>5G</span>
+          <span>📶</span>
+          <span>🔋 96%</span>
+        </div>
+      </div>
+
+      <!-- Live NoteTrack Application Screen -->
+      <div class="phone-screen">
+        <iframe class="app-iframe" id="app-frame" src="http://localhost:3030/src/index.html"></iframe>
+      </div>
+
+      <!-- Android Home Navigation Gesture Bar -->
+      <div class="android-nav-gesture">
+        <div class="gesture-pill"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Live Clock in Android Status Bar
+    function updateClock() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('live-time').textContent = `${hours}:${minutes}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Device Switcher
+    const chassis = document.getElementById('phone-chassis');
+    const iframe = document.getElementById('app-frame');
+    const buttons = document.querySelectorAll('.device-btn[data-w]');
+
+    buttons.forEach(btn => {
+      btn.onclick = () => {
+        buttons.forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        const w = parseInt(btn.dataset.w, 10);
+        const h = parseInt(btn.dataset.h, 10);
+        chassis.style.width = w + 'px';
+        chassis.style.height = h + 'px';
+      };
+    });
+
+    document.getElementById('btn-refresh').onclick = () => {
+      iframe.src = iframe.src;
+    };
+  </script>
+</body>
+</html>
