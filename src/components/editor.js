@@ -31,7 +31,9 @@ class BlockEditor {
       { type: 'bookmark', label: 'Web Bookmark', desc: 'Visual link preview card.', icon: '🔗' },
       { type: 'synced', label: 'Synced Block', desc: 'Sync content across multiple pages.', icon: '🔄' },
       { type: 'audio', label: 'Voice Memo / Audio', desc: 'Evernote audio voice recorder and player.', icon: '🎙️' },
-      { type: 'clip', label: 'Web Clip', desc: 'Evernote clipped web article snippet.', icon: '📎' }
+      { type: 'clip', label: 'Web Clip', desc: 'Evernote clipped web article snippet.', icon: '📎' },
+      { type: 'columns', columnsCount: 2, label: '2 Columns', desc: 'Create a 2-column responsive layout.', icon: '⫽' },
+      { type: 'columns', columnsCount: 3, label: '3 Columns', desc: 'Create a 3-column responsive layout.', icon: '⫽' }
     ];
 
     this.render();
@@ -612,6 +614,82 @@ class BlockEditor {
         break;
       }
 
+      case 'columns': {
+        const colsWrap = document.createElement('div');
+        colsWrap.className = 'af-columns-layout';
+        const cols = Array.isArray(block.columns) ? block.columns : [
+          { id: 'c1', text: 'Column 1 text...' },
+          { id: 'c2', text: 'Column 2 text...' }
+        ];
+
+        colsWrap.style.gridTemplateColumns = `repeat(${cols.length}, 1fr)`;
+
+        cols.forEach((col, cIdx) => {
+          const colDiv = document.createElement('div');
+          colDiv.className = 'af-column-pane';
+
+          const colHeader = document.createElement('div');
+          colHeader.className = 'af-col-header';
+          colHeader.innerHTML = `<span class="col-tag">Col ${cIdx + 1}</span>`;
+
+          if (!this.isReadOnly) {
+            const colActions = document.createElement('span');
+            colActions.className = 'col-actions';
+            if (cols.length > 1) {
+              const delColBtn = document.createElement('button');
+              delColBtn.className = 'btn-col-action';
+              delColBtn.textContent = '×';
+              delColBtn.title = 'Remove column';
+              delColBtn.onclick = (e) => {
+                e.stopPropagation();
+                cols.splice(cIdx, 1);
+                this.store.updateBlock(this.pageId, block.id, { columns: cols });
+                this.render();
+              };
+              colActions.appendChild(delColBtn);
+            }
+            colHeader.appendChild(colActions);
+          }
+
+          const colText = document.createElement('div');
+          colText.className = 'af-col-body';
+          colText.textContent = col.text || '';
+          if (!this.isReadOnly) {
+            colText.contentEditable = 'true';
+            colText.dataset.placeholder = 'Column text...';
+            colText.oninput = () => {
+              col.text = colText.textContent;
+              this.store.updateBlock(this.pageId, block.id, { columns: cols });
+              this.onUpdate();
+            };
+          }
+
+          colDiv.appendChild(colHeader);
+          colDiv.appendChild(colText);
+          colsWrap.appendChild(colDiv);
+        });
+
+        if (!this.isReadOnly && cols.length < 5) {
+          const addColBar = document.createElement('div');
+          addColBar.className = 'af-add-col-wrap';
+          const addColBtn = document.createElement('button');
+          addColBtn.className = 'btn-add-col';
+          addColBtn.textContent = '+ Col';
+          addColBtn.title = 'Add Column';
+          addColBtn.onclick = (e) => {
+            e.stopPropagation();
+            cols.push({ id: 'c-' + Date.now().toString(36), text: `Column ${cols.length + 1} content` });
+            this.store.updateBlock(this.pageId, block.id, { columns: cols });
+            this.render();
+          };
+          addColBar.appendChild(addColBtn);
+          colsWrap.appendChild(addColBar);
+        }
+
+        content.appendChild(colsWrap);
+        break;
+      }
+
       default: {
         const defP = document.createElement('p');
         this.makeEditable(defP, block, 'text');
@@ -695,6 +773,14 @@ class BlockEditor {
         if (text === '$$') {
           this.store.updateBlock(this.pageId, block.id, { type: 'math', text: '' });
           this.render();
+          return;
+        }
+        if (text === '/2col' || text === '/columns') {
+          this.applySlashOption({ type: 'columns', columnsCount: 2 }, block);
+          return;
+        }
+        if (text === '/3col') {
+          this.applySlashOption({ type: 'columns', columnsCount: 3 }, block);
           return;
         }
       }
@@ -894,6 +980,14 @@ class BlockEditor {
       update.title = 'Clipped Article';
       update.text = 'Key excerpt or quote from the clipped webpage.';
       update.date = new Date().toLocaleDateString();
+    }
+    if (opt.type === 'columns') {
+      const count = opt.columnsCount || 2;
+      update.type = 'columns';
+      update.columns = Array.from({ length: count }, (_, i) => ({
+        id: 'col-' + (i + 1),
+        text: `Column ${i + 1} content`
+      }));
     }
 
     this.store.updateBlock(this.pageId, block.id, update);

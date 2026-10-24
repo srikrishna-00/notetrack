@@ -58,7 +58,8 @@ class AppFlowyStore {
     tags = [],
     reminderDate = null,
     reminderDone = false,
-    sourceUrl = null
+    sourceUrl = null,
+    history = []
   } = {}) {
     const id = 'page-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
     const now = Date.now();
@@ -81,6 +82,7 @@ class AppFlowyStore {
       reminderDate: reminderDate || null,
       reminderDone: Boolean(reminderDone),
       sourceUrl: sourceUrl || null,
+      history: Array.isArray(history) ? [...history] : [],
       createdAt: now,
       updatedAt: now,
       blocks: type === 'document' ? [
@@ -387,7 +389,7 @@ class AppFlowyStore {
     return this.data.databases[pageId];
   }
 
-  addColumn(pageId, { name, type, options = [] }) {
+  addColumn(pageId, { name, type, options = [], ...rest } = {}) {
     const db = this.getDatabase(pageId);
     if (!db) return null;
     const colId = 'col_' + Math.random().toString(36).slice(2, 7);
@@ -396,7 +398,8 @@ class AppFlowyStore {
       name: name || 'Column',
       type: type || 'text',
       width: 140,
-      options: options || []
+      options: options || [],
+      ...rest
     };
     db.columns.push(col);
     this.notify();
@@ -583,6 +586,177 @@ class AppFlowyStore {
     }
 
     return results;
+  }
+
+  // Advanced Feature: Typo-Tolerant Fuzzy Search (Levenshtein Distance)
+  fuzzySearch(query, maxDistance = 2) {
+    if (!query || typeof query !== 'string') return [];
+    const q = query.toLowerCase().trim();
+    if (!q) return [];
+
+    const levenshtein = (s1, s2) => {
+      const m = s1.length;
+      const n = s2.length;
+      if (m === 0) return n;
+      if (n === 0) return m;
+      const d = [];
+      for (let i = 0; i <= m; i++) d[i] = [i];
+      for (let j = 0; j <= n; j++) d[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+          d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+        }
+      }
+      return d[m][n];
+    };
+
+    const qWords = q.split(/\s+/).filter(Boolean);
+    const results = [];
+
+    for (const page of Object.values(this.data.pages)) {
+      if (page.inTrash) continue;
+      const titleLower = (page.title || '').toLowerCase();
+      let bestScore = 0;
+      let matchedSnippet = null;
+
+      if (titleLower.includes(q)) {
+        bestScore = Math.max(bestScore, 100);
+      } else {
+        const tWords = titleLower.split(/\s+/).filter(Boolean);
+        for (const qw of qWords) {
+          for (const tw of tWords) {
+            const dist = levenshtein(qw, tw);
+            if (dist <= maxDistance) {
+              const score = Math.max(0, 90 - dist * 20);
+              if (score > bestScore) bestScore = score;
+            }
+          }
+        }
+      }
+
+      if (page.blocks) {
+        for (const b of page.blocks) {
+          const rawText = b.text || b.content || (b.data && b.data.text) || '';
+          const bLower = String(rawText).toLowerCase();
+          if (bLower.includes(q)) {
+            bestScore = Math.max(bestScore, 85);
+            matchedSnippet = rawText;
+            break;
+          } else {
+            const bWords = bLower.split(/\s+/).filter(Boolean);
+            for (const qw of qWords) {
+              for (const bw of bWords) {
+                if (Math.abs(qw.length - bw.length) <= maxDistance) {
+                  const dist = levenshtein(qw, bw);
+                  if (dist <= maxDistance) {
+                    const score = Math.max(0, 70 - dist * 15);
+                    if (score > bestScore) {
+                      bestScore = score;
+                      matchedSnippet = rawText;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (bestScore > 0) {
+        results.push({
+          pageId: page.id,
+          title: page.title,
+          icon: page.icon,
+          type: page.type,
+          snippet: matchedSnippet || page.title,
+          score: bestScore
+        });
+      }
+    }
+
+    return results.sort((a, b) => b.score - a.score);
+  }
+
+  // Advanced Feature: Page Revision History Snapshots
+  createSnapshot(pageId, label = 'Auto Snapshot') {
+    const page = this.data.pages[pageId];
+    if (!page) return null;
+    if (!Array.isArray(page.history)) page.history = [];
+    const snapshot = {
+      id: 'snap-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+      timestamp: Date.now(),
+      label,
+      title: page.title,
+      blocks: JSON.parse(JSON.stringify(page.blocks || []))
+    };
+    page.history.unshift(snapshot);
+    if (page.history.length > 30) page.history.pop();
+    return snapshot;
+  }
+
+  getVersionHistory(pageId) {
+    const page = this.data.pages[pageId];
+    return page && Array.isArray(page.history) ? page.history : [];
+  }
+
+  restoreSnapshot(pageId, snapshotId) {
+    const page = this.data.pages[pageId];
+    if (!page || !Array.isArray(page.history)) return null;
+    const snap = page.history.find(s => s.id === snapshotId);
+    if (!snap) return null;
+
+    this.createSnapshot(pageId, `Before Rollback (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
+
+    page.title = snap.title;
+    page.blocks = JSON.parse(JSON.stringify(snap.blocks || []));
+    page.updatedAt = Date.now();
+    this.notify();
+    return page;
+  }
+
+  // Advanced Feature: Database Relations & Rollup Evaluator
+  evaluateRollup(rollupCol, rowValues = {}, currentDb = null) {
+    if (!rollupCol || !rollupCol.relationColumnId || !currentDb) return '';
+    const relCol = (currentDb.columns || []).find(c => c.id === rollupCol.relationColumnId);
+    if (!relCol || !relCol.targetDatabaseId) return '';
+
+    const targetDb = this.getDatabase(relCol.targetDatabaseId);
+    if (!targetDb || !Array.isArray(targetDb.rows)) return '';
+
+    const linkedRowIds = rowValues[relCol.id];
+    const ids = Array.isArray(linkedRowIds)
+      ? linkedRowIds
+      : String(linkedRowIds || '').split(',').map(s => s.trim()).filter(Boolean);
+
+    if (ids.length === 0) return '';
+
+    const matchingRows = targetDb.rows.filter(r => ids.includes(r.id));
+    if (matchingRows.length === 0) return '';
+
+    const targetPropId = rollupCol.targetPropertyId || (targetDb.columns[0] && targetDb.columns[0].id);
+    const rawValues = matchingRows
+      .map(r => r.values ? r.values[targetPropId] : undefined)
+      .filter(v => v !== undefined && v !== null && v !== '');
+
+    const calc = rollupCol.calculation || 'count';
+    switch (calc) {
+      case 'count':
+        return matchingRows.length;
+      case 'sum':
+        return rawValues.reduce((acc, v) => acc + (Number(v) || 0), 0);
+      case 'avg': {
+        const sum = rawValues.reduce((acc, v) => acc + (Number(v) || 0), 0);
+        return rawValues.length > 0 ? Number((sum / rawValues.length).toFixed(2)) : 0;
+      }
+      case 'min':
+        return rawValues.length > 0 ? Math.min(...rawValues.map(Number)) : 0;
+      case 'max':
+        return rawValues.length > 0 ? Math.max(...rawValues.map(Number)) : 0;
+      case 'show_values':
+      default:
+        return rawValues.join(', ');
+    }
   }
 
   // Notion Feature: Backlinks Indexer

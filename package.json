@@ -8,7 +8,41 @@
     "start": "electron .",
     "test": "node --test test/**/*.test.js",
     "smoke": "APPFLOWY_SMOKE=1 electron .",
-    "web": "node scripts/serve.js"
+    "web": "node scripts/serve.js",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:all": "bash scripts/build-all-platforms.sh",
+    "cap:sync": "npx cap sync",
+    "cap:android": "npx cap open android",
+    "cap:ios": "npx cap open ios"
+  },
+  "build": {
+    "appId": "io.appflowy.lean",
+    "productName": "AppFlowy Lean",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Office"
+    }
   },
   "keywords": [
     "appflowy",

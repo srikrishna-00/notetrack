@@ -61,7 +61,30 @@ class SettingsModal {
           <button class="accent-dot" data-color="#ec4899" style="background:#ec4899" title="Rose"></button>
         </div>
       </div>
+      <div class="settings-row">
+        <div>
+          <div class="setting-label">Language / Locale (i18n)</div>
+          <div class="setting-sub">Select display language across UI</div>
+        </div>
+        <select class="setting-lang-select" id="settings-lang-select" style="background:var(--bg-primary);border:1px solid var(--border-color);color:var(--text-primary);padding:4px 8px;border-radius:var(--radius-sm)">
+          <option value="en">English (US)</option>
+          <option value="es">Español</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+          <option value="zh">简体中文</option>
+          <option value="ja">日本語</option>
+        </select>
+      </div>
     `;
+
+    const langSel = themeSection.querySelector('#settings-lang-select');
+    if (typeof i18n !== 'undefined' && langSel) {
+      langSel.value = i18n.getLocale();
+      langSel.onchange = () => {
+        i18n.setLocale(langSel.value);
+        if (this.onLocaleChange) this.onLocaleChange(langSel.value);
+      };
+    }
 
     themeSection.querySelectorAll('.theme-btn').forEach(btn => {
       btn.onclick = () => this.onThemeChange(btn.dataset.theme);

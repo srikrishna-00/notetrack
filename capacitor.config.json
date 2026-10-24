@@ -1,0 +1,27 @@
+{
+  "appId": "io.appflowy.lean",
+  "appName": "AppFlowy Lean",
+  "webDir": "src",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#1e1e2e"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#1e1e2e"
+    }
+  },
+  "ios": {
+    "contentInset": "always",
+    "preferredContentMode": "mobile"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true
+  }
+}

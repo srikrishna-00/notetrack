@@ -397,6 +397,77 @@ class DatabaseView {
         break;
       }
 
+      case 'relation': {
+        const relWrap = document.createElement('div');
+        relWrap.className = 'cell-relation-wrap';
+        const linkedIds = Array.isArray(val) ? val : (val ? String(val).split(',').map(s => s.trim()).filter(Boolean) : []);
+        const targetDb = col.targetDatabaseId ? this.store.getDatabase(col.targetDatabaseId) : null;
+        const targetTitleCol = targetDb ? (targetDb.columns.find(c => c.type === 'title') || targetDb.columns[0]) : null;
+
+        linkedIds.forEach(id => {
+          const pill = document.createElement('span');
+          pill.className = 'rel-tag';
+          let label = id;
+          if (targetDb && targetDb.rows) {
+            const targetRow = targetDb.rows.find(r => r.id === id);
+            if (targetRow && targetRow.values && targetTitleCol) {
+              label = targetRow.values[targetTitleCol.id] || id;
+            }
+          }
+          pill.textContent = label;
+
+          const removeBtn = document.createElement('span');
+          removeBtn.className = 'rel-remove';
+          removeBtn.textContent = ' ×';
+          removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            const next = linkedIds.filter(x => x !== id);
+            this.store.updateCell(this.pageId, row.id, col.id, next);
+            this.render();
+          };
+          pill.appendChild(removeBtn);
+          relWrap.appendChild(pill);
+        });
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn-add-rel';
+        addBtn.textContent = '+ Link';
+        addBtn.title = 'Link record from target database';
+        addBtn.onclick = (e) => {
+          e.stopPropagation();
+          let availableChoices = [];
+          if (targetDb && targetDb.rows) {
+            availableChoices = targetDb.rows.map(r => {
+              const name = (r.values && targetTitleCol && r.values[targetTitleCol.id]) || r.id;
+              return `${r.id} (${name})`;
+            });
+          }
+          const chosen = prompt('Enter record ID to link:\n' + (availableChoices.length ? availableChoices.join('\n') : 'Type row id'));
+          if (chosen) {
+            const rowId = chosen.split(' ')[0].trim();
+            if (rowId && !linkedIds.includes(rowId)) {
+              const next = [...linkedIds, rowId];
+              this.store.updateCell(this.pageId, row.id, col.id, next);
+              this.render();
+            }
+          }
+        };
+        relWrap.appendChild(addBtn);
+        td.appendChild(relWrap);
+        break;
+      }
+
+      case 'rollup': {
+        const db = this.store.getDatabase(this.pageId);
+        const rollupVal = this.store.evaluateRollup(col, row.values, db);
+        const badge = document.createElement('span');
+        badge.className = 'cell-rollup-badge';
+        badge.innerHTML = `<span>∑</span> <strong>${rollupVal !== '' ? rollupVal : '0'}</strong>`;
+        badge.title = `Rollup: ${col.calculation || 'count'}`;
+        td.appendChild(badge);
+        break;
+      }
+
       default: {
         const textDiv = document.createElement('div');
         textDiv.contentEditable = 'true';
@@ -843,20 +914,42 @@ class DatabaseView {
     const colName = prompt('Enter property name:');
     if (!colName || !colName.trim()) return;
 
-    const typeStr = prompt('Property type (text, number, select, multi_select, formula, date, checkbox, url):', 'text');
-    const validTypes = ['text', 'number', 'select', 'multi_select', 'formula', 'date', 'checkbox', 'url'];
+    const typeStr = prompt('Property type (text, number, select, multi_select, formula, relation, rollup, date, checkbox, url):', 'text');
+    const validTypes = ['text', 'number', 'select', 'multi_select', 'formula', 'relation', 'rollup', 'date', 'checkbox', 'url'];
     const type = validTypes.includes(typeStr) ? typeStr : 'text';
 
     let options = [];
     let formula = '';
+    let targetDatabaseId = null;
+    let relationColumnId = null;
+    let calculation = 'count';
+
     if (type === 'select' || type === 'multi_select') {
       const optsStr = prompt('Comma-separated options:', 'Feature, Bug, Enhancement');
       if (optsStr) options = optsStr.split(',').map(s => s.trim()).filter(Boolean);
     } else if (type === 'formula') {
       formula = prompt('Enter formula expression (e.g. prop("col_estimate") * 1.5):', 'prop("col_estimate") * 2') || '';
+    } else if (type === 'relation') {
+      const dbPages = Object.values(this.store.data.pages).filter(p => p.type === 'database');
+      const list = dbPages.map(p => `${p.id}: ${p.title}`).join('\n');
+      targetDatabaseId = prompt('Select target database ID:\n' + list, dbPages[0] ? dbPages[0].id : '');
+    } else if (type === 'rollup') {
+      const currentDb = this.store.getDatabase(this.pageId);
+      const relCols = (currentDb.columns || []).filter(c => c.type === 'relation');
+      if (relCols.length > 0) {
+        relationColumnId = prompt('Select relation column ID:\n' + relCols.map(c => `${c.id} (${c.name})`).join('\n'), relCols[0].id);
+      }
+      calculation = prompt('Calculation (count, sum, avg, min, max, show_values):', 'count') || 'count';
     }
 
-    const col = this.store.addColumn(this.pageId, { name: colName.trim(), type, options });
+    const col = this.store.addColumn(this.pageId, {
+      name: colName.trim(),
+      type,
+      options,
+      targetDatabaseId,
+      relationColumnId,
+      calculation
+    });
     if (col && formula) col.formula = formula;
     this.render();
   }
@@ -906,7 +999,9 @@ class DatabaseView {
       checkbox: '☑️',
       url: '🔗',
       formula: 'ƒx',
-      multi_select: '🏷️🏷️'
+      multi_select: '🏷️🏷️',
+      relation: '↗️',
+      rollup: '∑'
     };
     return icons[type] || '📄';
   }

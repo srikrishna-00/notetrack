@@ -61,12 +61,14 @@ class AppShell {
           </div>
         </main>
         <aside class="af-ai-drawer" id="af-ai-drawer"></aside>
+        <nav class="mobile-bottom-nav" id="mobile-bottom-nav" style="display:none;"></nav>
       </div>
     `;
 
     this.updateSidebar();
     this.updateTabs();
     this.updateHeader();
+    this.renderMobileBottomBar();
   }
 
   // 1. SIDEBAR
@@ -747,6 +749,7 @@ class AppShell {
       <div class="notion-menu-section evernote-menu-actions">
         <button class="menu-action-item" id="btn-menu-reminder">⏰ Set Note Reminder</button>
         <button class="menu-action-item" id="btn-menu-info">ℹ️ Note Info & Details</button>
+        <button class="menu-action-item" id="btn-menu-history">🕒 Page Version History</button>
         <button class="menu-action-item" id="btn-menu-enex">🐘 Export to Evernote (.enex)</button>
       </div>
     `;
@@ -783,6 +786,11 @@ class AppShell {
     popup.querySelector('#btn-menu-info').onclick = () => {
       popup.remove();
       this.showNoteInfoModal(page);
+    };
+
+    popup.querySelector('#btn-menu-history').onclick = () => {
+      popup.remove();
+      this.showVersionHistoryModal(page);
     };
 
     popup.querySelector('#btn-menu-enex').onclick = () => {
@@ -1313,6 +1321,165 @@ class AppShell {
     document.body.appendChild(backdrop);
     backdrop.onclick = (e) => {
       if (e.target === backdrop) backdrop.remove();
+    };
+  }
+
+  // Advanced Feature: Page Version History & Rollback Modal
+  showVersionHistoryModal(page) {
+    const existing = document.getElementById('af-version-history-modal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    backdrop.id = 'af-version-history-modal';
+
+    const modal = document.createElement('div');
+    modal.className = 'version-history-modal';
+
+    const history = this.store.getVersionHistory(page.id);
+    let selectedSnap = history[0] || null;
+
+    const listPane = document.createElement('div');
+    listPane.className = 'version-list-pane';
+    listPane.innerHTML = `
+      <div class="version-list-header">
+        <span>🕒 Version History</span>
+        <button class="btn-snap-manual" style="float:right;background:none;border:none;color:var(--accent-color);cursor:pointer;font-weight:600;font-size:11px;">+ Snapshot</button>
+      </div>
+      <div class="version-items-scroll"></div>
+    `;
+
+    const previewPane = document.createElement('div');
+    previewPane.className = 'version-preview-pane';
+
+    const renderList = () => {
+      const scroll = listPane.querySelector('.version-items-scroll');
+      scroll.innerHTML = '';
+      if (history.length === 0) {
+        scroll.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text-muted);text-align:center;">No history snapshots saved yet. Creating snapshots on page edits.</div>';
+      }
+      history.forEach((snap, idx) => {
+        const item = document.createElement('div');
+        item.className = 'version-item' + (snap === selectedSnap ? ' is-active' : '');
+        const dateStr = new Date(snap.timestamp).toLocaleString();
+        item.innerHTML = `
+          <div class="version-item-label">${snap.label || 'Snapshot ' + (history.length - idx)}</div>
+          <div class="version-item-time">${dateStr}</div>
+        `;
+        item.onclick = () => {
+          selectedSnap = snap;
+          renderList();
+          renderPreview();
+        };
+        scroll.appendChild(item);
+      });
+    };
+
+    const renderPreview = () => {
+      previewPane.innerHTML = '';
+      const head = document.createElement('div');
+      head.className = 'version-preview-header';
+
+      if (!selectedSnap) {
+        head.innerHTML = '<span>Current Version</span><button class="modal-close-btn">✕</button>';
+        head.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+        previewPane.appendChild(head);
+
+        const body = document.createElement('div');
+        body.className = 'version-preview-body';
+        body.innerHTML = `<h2>${page.title}</h2><p>Select a prior snapshot from the timeline on the left to preview differences or restore.</p>`;
+        previewPane.appendChild(body);
+        return;
+      }
+
+      head.innerHTML = `
+        <div>
+          <strong>${selectedSnap.label || 'Revision'}</strong>
+          <span style="font-size:11px;color:var(--text-muted);margin-left:8px;">${new Date(selectedSnap.timestamp).toLocaleString()}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn-restore-version">Restore This Version</button>
+          <button class="modal-close-btn">✕</button>
+        </div>
+      `;
+
+      head.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+      head.querySelector('.btn-restore-version').onclick = () => {
+        if (confirm(`Restore version from ${new Date(selectedSnap.timestamp).toLocaleString()}?`)) {
+          this.store.restoreSnapshot(page.id, selectedSnap.id);
+          backdrop.remove();
+          this.onPageSelect(page.id);
+        }
+      };
+
+      const body = document.createElement('div');
+      body.className = 'version-preview-body';
+      const h2 = document.createElement('h2');
+      h2.textContent = selectedSnap.title || page.title;
+      body.appendChild(h2);
+
+      (selectedSnap.blocks || []).forEach(b => {
+        const p = document.createElement('p');
+        p.textContent = b.text || b.content || (b.data && b.data.text) || `[${b.type}]`;
+        body.appendChild(p);
+      });
+
+      previewPane.appendChild(head);
+      previewPane.appendChild(body);
+    };
+
+    listPane.querySelector('.btn-snap-manual').onclick = () => {
+      const label = prompt('Snapshot label / comment:', 'Manual Backup');
+      if (label) {
+        const s = this.store.createSnapshot(page.id, label);
+        if (s) {
+          selectedSnap = s;
+          renderList();
+          renderPreview();
+        }
+      }
+    };
+
+    renderList();
+    renderPreview();
+
+    modal.appendChild(listPane);
+    modal.appendChild(previewPane);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+  }
+
+  // Cross-Platform Mobile Bottom Navigation Bar
+  renderMobileBottomBar() {
+    const nav = document.getElementById('mobile-bottom-nav');
+    if (!nav) return;
+
+    nav.innerHTML = `
+      <button class="nav-btn" id="m-btn-sidebar" title="Pages">📂</button>
+      <button class="nav-btn" id="m-btn-search" title="Search">🔍</button>
+      <button class="nav-btn btn-nav-new" id="m-btn-new" title="New Page" style="font-size:18px;font-weight:700;color:var(--accent-color);">+</button>
+      <button class="nav-btn" id="m-btn-scratch" title="Scratchpad">⚡</button>
+      <button class="nav-btn" id="m-btn-settings" title="Settings">⚙️</button>
+    `;
+
+    nav.querySelector('#m-btn-sidebar').onclick = () => {
+      const sidebar = document.getElementById('af-sidebar');
+      if (sidebar) sidebar.classList.toggle('is-mobile-open');
+    };
+    nav.querySelector('#m-btn-search').onclick = () => {
+      if (typeof PaletteModal !== 'undefined') new PaletteModal({ store: this.store, onSelect: (id) => this.onPageSelect(id) }).show();
+    };
+    nav.querySelector('#m-btn-new').onclick = () => {
+      const p = this.store.createPage({ spaceId: this.activeSpaceId, title: 'Untitled Note' });
+      this.onPageSelect(p.id);
+    };
+    nav.querySelector('#m-btn-scratch').onclick = () => this.showScratchpadModal();
+    nav.querySelector('#m-btn-settings').onclick = () => {
+      if (typeof SettingsModal !== 'undefined') new SettingsModal({ store: this.store }).show();
     };
   }
 }

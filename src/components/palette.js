@@ -124,8 +124,12 @@ class CommandPalette {
 
     if (!query) return defaultActions;
 
-    // Search pages in store
-    const pageMatches = this.store.search(query).map(p => ({
+    // Search pages in store with typo-tolerant fuzzy search
+    const matches = typeof this.store.fuzzySearch === 'function'
+      ? this.store.fuzzySearch(query)
+      : this.store.search(query);
+
+    const pageMatches = matches.map(p => ({
       id: p.pageId,
       title: p.title,
       icon: p.icon || '📄',
