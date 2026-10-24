@@ -30,6 +30,11 @@ test('Notion Formula Evaluator evaluates math, logic and properties', () => {
 
   // Fallback on empty or invalid
   assert.equal(store.evaluateFormula('', row), '');
+
+  // Security sandbox: block execution of dangerous globals
+  assert.equal(store.evaluateFormula('process.exit()', row), '#SECURITY_BLOCKED');
+  assert.equal(store.evaluateFormula('window.location', row), '#SECURITY_BLOCKED');
+  assert.equal(store.evaluateFormula('constructor.prototype', row), '#SECURITY_BLOCKED');
 });
 
 test('Notion Backlinks Engine detects @pageId and [[pageId]] references across pages', () => {

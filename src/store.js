@@ -639,6 +639,12 @@ class AppFlowyStore {
       const concat = (...args) => args.join('');
       const iff = (cond, ifTrue, ifFalse) => (cond ? ifTrue : ifFalse);
 
+      // Security Sandbox: Prevent access to global scope, prototype pollution, or external APIs
+      const forbiddenPatterns = /\b(window|document|global|globalThis|process|require|import|eval|Function|constructor|prototype|__proto__|setTimeout|setInterval|fetch|XMLHttpRequest|WebSocket|localStorage|sessionStorage)\b/i;
+      if (forbiddenPatterns.test(formula)) {
+        return '#SECURITY_BLOCKED';
+      }
+
       let expr = formula.replace(/\bif\s*\(/g, 'iff(');
       const fn = new Function('prop', 'round', 'min', 'max', 'concat', 'iff', `
         "use strict";
