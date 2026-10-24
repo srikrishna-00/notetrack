@@ -134,7 +134,9 @@ body {
   padding: 10px 10px 14px;
   gap: 10px;
   overflow-y: auto;
-  transition: width var(--transition-normal), min-width var(--transition-normal), margin-left var(--transition-normal), opacity var(--transition-normal);
+  -webkit-overflow-scrolling: touch;
+  contain: layout style;
+  transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.18s cubic-bezier(0.16, 1, 0.3, 1), margin-left 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
 }
 .af-sidebar.is-collapsed {
   width: 0 !important;
@@ -457,7 +459,7 @@ body {
   padding: 0 18px;
   user-select: none;
   z-index: 10;
-  backdrop-filter: blur(12px);
+  contain: layout style;
 }
 
 .topbar-left {
@@ -601,6 +603,27 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  will-change: scroll-position;
+  contain: content;
+}
+
+/* macOS Desktop Native Traffic Light Clearance & Drag Regions */
+body.is-mac-desktop .af-sidebar {
+  padding-top: 38px;
+}
+body.is-mac-desktop .af-topbar {
+  padding-left: 20px;
+  -webkit-app-region: drag;
+}
+body.is-mac-desktop .af-topbar button,
+body.is-mac-desktop .af-topbar input,
+body.is-mac-desktop .af-topbar a,
+body.is-mac-desktop .af-topbar .topbar-action-pill,
+body.is-mac-desktop .af-topbar .topbar-actions,
+body.is-mac-desktop .af-topbar .af-breadcrumbs {
+  -webkit-app-region: no-drag;
 }
 
 /* 3. CLEAN DOCUMENT HEADER */

@@ -23,9 +23,9 @@ class AppFlowyStore {
     return () => this.subscribers.delete(callback);
   }
 
-  notify() {
+  notify(event = null) {
     for (const sub of this.subscribers) {
-      try { sub(this.data); } catch (err) { console.error('Store subscriber error:', err); }
+      try { sub(this.data, event); } catch (err) { console.error('Store subscriber error:', err); }
     }
   }
 
@@ -316,7 +316,7 @@ class AppFlowyStore {
       }
     }
 
-    this.notify();
+    this.notify({ type: 'block', pageId, blockId });
     return block;
   }
 
@@ -513,7 +513,7 @@ class AppFlowyStore {
     if (!row) return false;
     if (!row.values) row.values = {};
     row.values[columnId] = value;
-    this.notify();
+    this.notify({ type: 'cell', pageId, rowId, columnId });
     return true;
   }
 

@@ -18,7 +18,18 @@ class AppShell {
     this.collapsedNodes = new Set();
 
     this.initShortcuts();
-    this.store.subscribe(() => this.updateSidebar());
+    this.store.subscribe((data, event) => {
+      if (event && (event.type === 'block' || event.type === 'cell')) return;
+      this.scheduleSidebarUpdate();
+    });
+  }
+
+  scheduleSidebarUpdate() {
+    if (this._sidebarRaf) return;
+    this._sidebarRaf = requestAnimationFrame(() => {
+      this._sidebarRaf = null;
+      this.updateSidebar();
+    });
   }
 
   escape(str) {

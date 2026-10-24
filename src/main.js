@@ -14,7 +14,9 @@ if (SMOKE_MODE) {
   app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'notetrack-smoke-')));
 }
 
-let mainWindow = null;
+// Hardware acceleration & GPU rendering flags
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -23,7 +25,8 @@ function createWindow() {
     minWidth: 850,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
-    backgroundColor: '#12141a',
+    trafficLightPosition: { x: 14, y: 14 },
+    backgroundColor: '#191919',
     title: 'NoteTrack',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

@@ -15,14 +15,34 @@
 
   const store = new AppFlowyStore(initialData);
 
-  // Auto-save to localStorage on every change
+  // High-performance debounced auto-save to localStorage (250ms)
+  let saveTimer = null;
   store.subscribe((data) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
-      console.warn('Auto-save failed:', e);
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        console.warn('Auto-save failed:', e);
+      }
+    }, 250);
+  });
+
+  // Flush pending save immediately on unload
+  window.addEventListener('beforeunload', () => {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(store.data));
+      } catch (e) {}
     }
   });
+
+  // Desktop platform integration
+  if (typeof window !== 'undefined' && window.desktopApi && window.desktopApi.platform === 'darwin') {
+    document.body.classList.add('is-mac-desktop');
+  }
 
   // 2. State & Component Instances
   let currentEditor = null;
@@ -126,7 +146,7 @@
       currentDbView = new DatabaseView(viewContainer, {
         store,
         pageId,
-        onUpdate: () => shell.updateSidebar()
+        onUpdate: () => {}
       });
     } else if (page.type === 'folder') {
       currentEditor = null;
@@ -139,7 +159,7 @@
       currentNotepadView = new NotepadView(viewContainer, {
         store,
         pageId,
-        onUpdate: () => shell.updateSidebar(),
+        onUpdate: () => {},
         onModeSwitch: (mode) => {
           activeEditorModes[pageId] = mode;
           renderPageView(pageId);
@@ -153,7 +173,7 @@
         store,
         pageId,
         isReadOnly: Boolean(page.isLocked),
-        onUpdate: () => shell.updateSidebar()
+        onUpdate: () => {}
       });
     }
   }

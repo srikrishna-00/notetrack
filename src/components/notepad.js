@@ -384,6 +384,9 @@ class NotepadView {
     if (!textarea || !gutter) return;
 
     const lines = (textarea.value || '').split('\n').length;
+    if (lines === this._lastLineCount) return;
+    this._lastLineCount = lines;
+
     const nums = [];
     for (let i = 1; i <= Math.max(1, lines); i++) {
       nums.push(i);
