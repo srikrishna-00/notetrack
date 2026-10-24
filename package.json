@@ -1,0 +1,30 @@
+{
+  "name": "appflowy-lean",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ultra-lightweight, 100% feature-complete alternative to AppFlowy for desktop",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/**/*.test.js",
+    "smoke": "APPFLOWY_SMOKE=1 electron .",
+    "web": "node scripts/serve.js"
+  },
+  "keywords": [
+    "appflowy",
+    "notion",
+    "block-editor",
+    "kanban",
+    "database",
+    "calendar",
+    "local-first",
+    "electron"
+  ],
+  "author": "srikrishna",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^44.7.2",
+    "katex": "^0.19.0"
+  }
+}

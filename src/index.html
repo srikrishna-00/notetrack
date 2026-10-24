@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' asset: data: blob: https:; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:;">
+  <title>AppFlowy Lean</title>
+  <link rel="stylesheet" href="../node_modules/katex/dist/katex.min.css" />
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Dependencies -->
+  <script src="../node_modules/katex/dist/katex.min.js"></script>
+
+  <!-- AppFlowy Lean Subsystems -->
+  <script src="store.js"></script>
+  <script src="components/io.js"></script>
+  <script src="components/ai.js"></script>
+  <script src="components/editor.js"></script>
+  <script src="components/database.js"></script>
+  <script src="components/palette.js"></script>
+  <script src="components/settings.js"></script>
+  <script src="components/shell.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
