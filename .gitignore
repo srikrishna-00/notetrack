@@ -3,6 +3,7 @@ node_modules/
 *.log
 *.keystore
 *.jks
+*keystore.properties
 release-keystore.properties
 dist/
 build/
