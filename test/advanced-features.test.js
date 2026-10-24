@@ -160,12 +160,12 @@ test('Advanced Feature: Multi-Column Layout Block Structure and Persistence', ()
 });
 
 test('Advanced Feature: Multi-Language i18n Localization Engine', () => {
-  assert.equal(translations.en.appName, 'AppFlowy Lean');
-  assert.equal(translations.es.appName, 'AppFlowy Lean');
-  assert.equal(translations.de.appName, 'AppFlowy Lean');
-  assert.equal(translations.fr.appName, 'AppFlowy Lean');
-  assert.equal(translations.zh.appName, 'AppFlowy Lean');
-  assert.equal(translations.ja.appName, 'AppFlowy Lean');
+  assert.equal(translations.en.appName, 'NoteTrack');
+  assert.equal(translations.es.appName, 'NoteTrack');
+  assert.equal(translations.de.appName, 'NoteTrack');
+  assert.equal(translations.fr.appName, 'NoteTrack');
+  assert.equal(translations.zh.appName, 'NoteTrack');
+  assert.equal(translations.ja.appName, 'NoteTrack');
 
   // Verify English translations
   i18n.setLocale('en');

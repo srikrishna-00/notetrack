@@ -16,7 +16,7 @@ test('Store initializes with default workspace, spaces and pages', () => {
 
   const welcomePage = store.getPage('page-welcome');
   assert.ok(welcomePage);
-  assert.equal(welcomePage.title, 'Welcome to AppFlowy Lean');
+  assert.equal(welcomePage.title, 'Welcome to NoteTrack');
   assert.equal(welcomePage.type, 'document');
 
   const tasksPage = store.getPage('page-tasks');

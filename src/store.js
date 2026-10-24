@@ -1098,7 +1098,7 @@ class AppFlowyStore {
           id: 'page-welcome',
           spaceId: 'space-personal',
           parentId: null,
-          title: 'Welcome to AppFlowy Lean',
+          title: 'Welcome to NoteTrack',
           icon: '⚡',
           cover: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
           type: 'document',
@@ -1111,8 +1111,8 @@ class AppFlowyStore {
           createdAt: 1729700000000,
           updatedAt: 1729700000000,
           blocks: [
-            { id: 'b1', type: 'heading', level: 1, text: 'Welcome to AppFlowy Lean!' },
-            { id: 'b2', type: 'callout', icon: '💡', text: 'AppFlowy Lean is an ultra-fast, local-first workspace with 100% feature parity to AppFlowy in a fraction of the code.' },
+            { id: 'b1', type: 'heading', level: 1, text: 'Welcome to NoteTrack!' },
+            { id: 'b2', type: 'callout', icon: '💡', text: 'NoteTrack is an ultra-fast, local-first workspace with 100% full feature parity in a fraction of the code.' },
             { id: 'b3', type: 'heading', level: 2, text: 'Features at a glance' },
             { id: 'b4', type: 'todo', text: 'Type / anywhere to open the Slash Command Menu', checked: true },
             { id: 'b5', type: 'todo', text: 'Press Cmd+K to open the Global Command Palette and Search', checked: false },
@@ -1120,7 +1120,7 @@ class AppFlowyStore {
             { id: 'b7', type: 'heading', level: 3, text: 'Rich Block Showcase' },
             { id: 'b8', type: 'toggle', title: 'Click to expand toggle list block', content: 'Nested thoughts and collapse capability right inside documents.' },
             { id: 'b9', type: 'quote', text: '“Simplicity is prerequisite for reliability.” — Edsger W. Dijkstra' },
-            { id: 'b10', type: 'code', language: 'javascript', text: '// AppFlowy Lean: Fast, lightweight, zero FFI latency\nconst app = new AppFlowyStore();\nconsole.log("Ready!");' },
+            { id: 'b10', type: 'code', language: 'javascript', text: '// NoteTrack: Fast, lightweight, zero FFI latency\nconst app = new NoteTrackStore();\nconsole.log("Ready!");' },
             { id: 'b11', type: 'math', text: 'E = mc^2 \\quad \\text{and} \\quad \\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}' },
             { id: 'b12', type: 'divider' },
             { id: 'b13', type: 'paragraph', text: 'Click the AI icon in the header or bottom bar to ask questions or use built-in prompt templates.' }
@@ -1228,6 +1228,12 @@ class AppFlowyStore {
   }
 }
 
+const NoteTrackStore = AppFlowyStore;
+if (typeof window !== 'undefined') {
+  window.NoteTrackStore = NoteTrackStore;
+  window.AppFlowyStore = AppFlowyStore;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { AppFlowyStore };
+  module.exports = { NoteTrackStore, AppFlowyStore };
 }

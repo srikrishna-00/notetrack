@@ -1,6 +1,6 @@
 {
-  "appId": "io.appflowy.lean",
-  "appName": "AppFlowy Lean",
+  "appId": "com.notetrack.app",
+  "appName": "NoteTrack",
   "webDir": "src",
   "bundledWebRuntime": false,
   "server": {

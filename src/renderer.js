@@ -141,7 +141,7 @@
 
     drawer.innerHTML = `
       <div class="ai-drawer-head">
-        <span>✨ AppFlowy AI</span>
+        <span>✨ NoteTrack AI</span>
         <button class="modal-close-btn" id="btn-close-ai">✕</button>
       </div>
       <div class="ai-templates-list" id="ai-templates-strip"></div>

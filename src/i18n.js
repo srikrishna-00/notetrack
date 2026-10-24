@@ -1,9 +1,9 @@
-// src/i18n.js - Multi-Language Localization Engine for AppFlowy Lean
+// src/i18n.js - Multi-Language Localization Engine for NoteTrack
 'use strict';
 
 const translations = {
   en: {
-    appName: 'AppFlowy Lean', searchPlaceholder: 'Search or jump to... (Ctrl/Cmd+K)',
+    appName: 'NoteTrack', searchPlaceholder: 'Search or jump to... (Ctrl/Cmd+K)',
     newDoc: '+ New Page', newDb: '+ New Database', scratchpad: 'Quick Scratchpad',
     favorites: 'Favorites', privateSpace: 'Private Space', teamSpace: 'Team Space', trash: 'Trash',
     tags: 'Global Tags', reminders: 'Reminders & Deadlines', settings: 'Settings',
@@ -16,7 +16,7 @@ const translations = {
     close: 'Close', save: 'Save', cancel: 'Cancel', confirm: 'Confirm', status: 'Status', date: 'Date'
   },
   es: {
-    appName: 'AppFlowy Lean', searchPlaceholder: 'Buscar o ir a... (Ctrl/Cmd+K)',
+    appName: 'NoteTrack', searchPlaceholder: 'Buscar o ir a... (Ctrl/Cmd+K)',
     newDoc: '+ Nueva Página', newDb: '+ Nueva Base de Datos', scratchpad: 'Notas Rápidas',
     favorites: 'Favoritos', privateSpace: 'Espacio Privado', teamSpace: 'Espacio de Equipo', trash: 'Papelera',
     tags: 'Etiquetas Globales', reminders: 'Recordatorios', settings: 'Configuración',
@@ -29,7 +29,7 @@ const translations = {
     close: 'Cerrar', save: 'Guardar', cancel: 'Cancelar', confirm: 'Confirmar', status: 'Estado', date: 'Fecha'
   },
   de: {
-    appName: 'AppFlowy Lean', searchPlaceholder: 'Suchen oder springen... (Ctrl/Cmd+K)',
+    appName: 'NoteTrack', searchPlaceholder: 'Suchen oder springen... (Ctrl/Cmd+K)',
     newDoc: '+ Neue Seite', newDb: '+ Neue Datenbank', scratchpad: 'Schnellnotizen',
     favorites: 'Favoriten', privateSpace: 'Privater Bereich', teamSpace: 'Team Bereich', trash: 'Papierkorb',
     tags: 'Globale Schlagwörter', reminders: 'Erinnerungen', settings: 'Einstellungen',
@@ -42,7 +42,7 @@ const translations = {
     close: 'Schließen', save: 'Speichern', cancel: 'Abbrechen', confirm: 'Bestätigen', status: 'Status', date: 'Datum'
   },
   fr: {
-    appName: 'AppFlowy Lean', searchPlaceholder: 'Rechercher ou accéder... (Ctrl/Cmd+K)',
+    appName: 'NoteTrack', searchPlaceholder: 'Rechercher ou accéder... (Ctrl/Cmd+K)',
     newDoc: '+ Nouvelle Page', newDb: '+ Nouvelle Base de Données', scratchpad: 'Bloc-notes Rapide',
     favorites: 'Favoris', privateSpace: 'Espace Privé', teamSpace: 'Espace Équipe', trash: 'Corbeille',
     tags: 'Mots-clés Globaux', reminders: 'Rappels et Échéances', settings: 'Paramètres',
@@ -55,7 +55,7 @@ const translations = {
     close: 'Fermer', save: 'Enregistrer', cancel: 'Annuler', confirm: 'Confirmer', status: 'Statut', date: 'Date'
   },
   zh: {
-    appName: 'AppFlowy Lean', searchPlaceholder: '搜索或跳转... (Ctrl/Cmd+K)',
+    appName: 'NoteTrack', searchPlaceholder: '搜索或跳转... (Ctrl/Cmd+K)',
     newDoc: '+ 新建页面', newDb: '+ 新建数据库', scratchpad: '快速便签',
     favorites: '收藏夹', privateSpace: '个人空间', teamSpace: '团队空间', trash: '回收站',
     tags: '全局标签', reminders: '提醒与截止日期', settings: '设置',
@@ -68,7 +68,7 @@ const translations = {
     close: '关闭', save: '保存', cancel: '取消', confirm: '确认', status: '状态', date: '日期'
   },
   ja: {
-    appName: 'AppFlowy Lean', searchPlaceholder: '検索またはジャンプ... (Ctrl/Cmd+K)',
+    appName: 'NoteTrack', searchPlaceholder: '検索またはジャンプ... (Ctrl/Cmd+K)',
     newDoc: '+ 新しいページ', newDb: '+ 新しいデータベース', scratchpad: 'クイックスクラッチパッド',
     favorites: 'お気に入り', privateSpace: 'プライベート', teamSpace: 'チームスペース', trash: 'ゴミ箱',
     tags: 'グローバルタグ', reminders: 'リマインダーと期限', settings: '設定',

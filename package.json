@@ -1,8 +1,8 @@
 {
-  "name": "appflowy-lean",
-  "version": "0.1.0",
+  "name": "notetrack",
+  "version": "1.0.0",
   "private": true,
-  "description": "Ultra-lightweight, 100% feature-complete alternative to AppFlowy for desktop",
+  "description": "NoteTrack — Ultra-lean, private, all-in-one workspace for notes, docs, and databases",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -15,11 +15,12 @@
     "build:all": "bash scripts/build-all-platforms.sh",
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
-    "cap:ios": "npx cap open ios"
+    "cap:ios": "npx cap open ios",
+    "build:android": "npx cap copy android"
   },
   "build": {
-    "appId": "io.appflowy.lean",
-    "productName": "AppFlowy Lean",
+    "appId": "com.notetrack.app",
+    "productName": "NoteTrack",
     "directories": {
       "output": "dist"
     },
@@ -28,11 +29,17 @@
       "package.json"
     ],
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.productivity"
     },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -40,7 +47,10 @@
       "createDesktopShortcut": true
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Office"
     }
   },
@@ -56,9 +66,13 @@
   ],
   "author": "srikrishna",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3"
+  },
   "devDependencies": {
-    "electron": "^44.7.2",
-    "katex": "^0.19.0"
+    "electron": "^44.9.3",
+    "katex": "^0.19.1"
   }
 }

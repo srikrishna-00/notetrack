@@ -1,7 +1,7 @@
 {
-  "name": "AppFlowy Lean",
-  "short_name": "AppFlowy",
-  "description": "Ultra-lean, private, extensible workspace combining AppFlowy, Notion, and Evernote",
+  "name": "NoteTrack",
+  "short_name": "NoteTrack",
+  "description": "NoteTrack — Ultra-lean, private, extensible workspace for notes, docs, and databases",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1e1e2e",

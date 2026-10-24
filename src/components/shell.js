@@ -89,7 +89,7 @@ class AppShell {
     wsHeader.innerHTML = `
       <div class="ws-info">
         <span class="ws-logo">⚡</span>
-        <span class="ws-name">${ws.name || 'AppFlowy Lean'}</span>
+        <span class="ws-name">${ws.name || 'NoteTrack'}</span>
       </div>
       <button class="ws-settings-btn" title="Settings">⚙️</button>
     `;

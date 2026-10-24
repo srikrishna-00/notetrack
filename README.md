@@ -1,52 +1,62 @@
-# AppFlowy Lean
+# NoteTrack
 
-> An ultra-fast, local-first desktop application inspired by **AppFlowy**, engineered from reverse-engineering evidence of AppFlowy v0.14.10, achieving **100% feature parity** in **140x less code**.
+> An ultra-fast, local-first, privacy-focused all-in-one workspace for notes, docs, and multi-view databases. Combining the best of **AppFlowy**, **Notion**, and **Evernote** into a unified, ultra-lean codebase (< 7,000 LOC JS).
+>
+> **Platforms:** macOS, Windows, Linux, Android (Google Play Store), iOS (App Store), and Web/PWA.
+> **Android Package Identifier:** `com.notetrack.app`
 
 ---
 
 ## 1. Feature Parity Matrix
 
-Every single feature present in AppFlowy (extracted directly from `/Applications/AppFlowy.app`, SQLite schema, and UI manifests) is fully supported:
+NoteTrack provides comprehensive feature parity across docs, databases, and note-taking superpowers:
 
-| Feature Area | AppFlowy (v0.14.10) | AppFlowy Lean | Verification Status |
-|---|---|---|---|
-| **Spaces & Hierarchy** | Personal / Shared spaces, recursive page tree | Multi-space selector (`Personal`, `Work`, `Private`), infinite nested sub-pages | Verified (`test/store.test.js`) |
-| **Favorites & Trash** | Pinned favorites, soft-delete trash with restore & purge | ⭐ Favorites section, 🗑️ Trash bin with recursive restore & permanent purge | Verified (`test/store.test.js`) |
-| **Multi-Tab Interface** | Multi-tab navigation bar | Browser-style tabs with close (`✕`), switch, and open actions | Verified (Smoke test) |
-| **Page Header & Covers** | Emoji icon picker, gradient/custom covers, locking | Dynamic covers, emoji picker, inline title editing, 🔒 Page Locking | Verified |
-| **Block Document Editor** | `appflowy_editor` (H1-H3, Todo, Lists, Callout, Quote, Code, Math, Divider, Image) | Full block editor with all 13 block types, inline formatting, and KaTeX math | Verified (`test/io.test.js`) |
-| **Slash Command Menu** | Type `/` for popup block picker | Floating `/` menu with arrow-key navigation and instant block conversion | Verified |
-| **Database: Grid View** | Typed columns, in-cell editing, calculations footer | Spreadsheet grid (Text, Number, Select, Date, Checkbox, URL, Formula) + Count/Sum/Avg/Min/Max | Verified (`test/database.test.js`) |
-| **Database: Board View** | Kanban board grouped by Select/Status property | Drag-and-drop Kanban columns with card counters and inline card creation | Verified (`test/database.test.js`) |
-| **Database: Calendar View**| Monthly calendar grid plotting date properties | Interactive month grid with day events and quick-add scheduling | Verified (`test/database.test.js`) |
-| **Database: Gallery View** | Card visual cards with covers and metadata | Card grid with cover gradients, status pills, and direct detail opening | Verified (`test/database.test.js`) |
-| **Database: Timeline View**| Gantt timeline of tasks | Horizontal Gantt chart with task span bars | Verified (`test/database.test.js`) |
-| **Database: Chart View**   | Aggregated charts by category | Dynamic vertical distribution bar chart with count labels | Verified (`test/database.test.js`) |
-| **Row-as-Document**        | Every database row opens as a full rich document | Click row to open modal with properties table and embedded Block Editor | Verified (`test/database.test.js`) |
-| **AI Assistant**           | Built-in prompts (Terminal, Cover Letter, CEO, etc.) | 10 AppFlowy prompt templates + offline context assistant + "Insert to Page" | Verified (`test/ai.test.js`) |
-| **Command Palette (Cmd+K)**| Global search & shortcut commands | Instant fuzzy search across titles, blocks, and quick actions | Verified (`test/store.test.js`) |
-| **Import & Export**        | Markdown and CSV export/import | Markdown (.md) import/export, CSV table import/export, JSON backup | Verified (`test/io.test.js`) |
-| **Settings & Themes**      | Light & dark themes, accent customization | Dark / Light theme toggle, accent color palette, shortcut cheatsheet | Verified |
+| Feature Area | NoteTrack Capability | Status |
+|---|---|---|
+| **Spaces & Hierarchy** | Multi-space selector (`Personal`, `Work`, `Private`), infinite nested sub-pages | Verified (`test/store.test.js`) |
+| **Favorites & Trash** | ⭐ Favorites section, 🗑️ Trash bin with recursive restore & permanent purge | Verified (`test/store.test.js`) |
+| **Granular Deletions** | Dedicated separate deletion for voice memos, images, and document pages | Verified (`test/advanced-features.test.js`) |
+| **Multi-Tab Interface** | Browser-style tabs with close (`✕`), switch, and open actions | Verified (Smoke test) |
+| **Page Header & Covers** | Emoji icon picker, gradient/custom covers, 🔒 Page Locking | Verified |
+| **Block Document Editor** | Full block editor with 13 block types (H1-H3, Todo, Callout, Quote, Code, Math, Voice Memo, Image, Divider) | Verified (`test/io.test.js`) |
+| **Slash Command Menu** | Floating `/` menu with arrow-key navigation and instant block conversion | Verified |
+| **Database: 6-in-1 Views**| Grid, Kanban Board, Calendar, Gallery, Gantt Timeline, Distribution Chart | Verified (`test/database.test.js`) |
+| **Database Formulas & Rollups**| Math/logic formulas, relation links, and aggregated rollups | Verified (`test/notion.test.js`) |
+| **Evernote Superpowers**| Global Tags, Reminders & Deadlines, Quick Scratchpad, Voice Memos, .enex Import/Export | Verified (`test/evernote.test.js`) |
+| **Multi-Language i18n** | English, Español, Deutsch, Français, 简体中文, 日本語 | Verified (`test/advanced-features.test.js`) |
+| **AI Assistant** | 10 Built-in productivity templates + offline context assistant | Verified (`test/ai.test.js`) |
+| **Fuzzy Search (Cmd+K)** | Typo-tolerant Levenshtein search across titles and blocks | Verified (`test/advanced-features.test.js`) |
+| **Version History** | Snapshot revision timeline with one-click restore | Verified (`test/advanced-features.test.js`) |
 
 ---
 
-## 2. Why AppFlowy Was Heavy & How Lean Eliminates the Bloat
+## 2. Google Play Store Release (Android)
 
-```
-AppFlowy Original Architecture:
-[ Flutter (Dart) UI ] <---> [ Protobuf Bridge ] <---> [ Rust C-ABI ] <---> [ flowy-core Engine ]
-                                                                             ├── RocksDB (collab_db)
-                                                                             └── SQLite (flowy-database.db)
-Size: 324 MB binary | 62 frameworks | ~600,000 lines of code
+NoteTrack is built with Capacitor native bridge under the package namespace `com.notetrack.app`.
 
-AppFlowy Lean Architecture:
-[ Electron Window ] <-----------------> [ Reactive Store (store.js) ] <---> [ Local Storage / JSON ]
-Single Runtime (JavaScript ESM) | Zero FFI Overhead | 4,100 lines of code (140x smaller)
+### Option A: Open & Build in Android Studio
+1. Open the project in Android Studio:
+   ```bash
+   npx cap open android
+   ```
+2. In Android Studio, wait for Gradle sync to complete.
+3. Select menu: **Build > Generate Signed Bundle / APK...**
+4. Select **Android App Bundle (.aab)** -> Click **Next**.
+5. Choose your upload keystore file (or create new).
+6. Select build variant **release** -> Click **Create**.
+7. The signed `.aab` will be generated in `android/app/release/app-release.aab`.
+
+### Option B: Build via CLI
+```bash
+./scripts/build-android-bundle.sh
 ```
+
+### Option C: Automated GitHub Actions CI
+Push the repository to GitHub; the pre-configured `.github/workflows/android-playstore.yml` will automatically build the signed `.aab` in Ubuntu with JDK 21 and export it as a downloadable release artifact ready to upload to Google Play Console.
 
 ---
 
-## 3. Quick Start
+## 3. Quick Start & Verification
 
 ### A. Run Desktop Application
 ```bash
@@ -75,10 +85,11 @@ npm run web
 
 ```
 /Users/srikrishna/Desktop/appflowy-lean/
-├── APPFLOWY-ANALYSIS.md       # Full reverse engineering report
-├── SPEC.md                   # Formal specification & capability map
-├── PLAN.md                   # Implementation plan & milestone verification
-├── package.json              # Scripts & dependencies
+├── android/                  # Native Android platform (Capacitor)
+│   └── app/
+│       ├── build.gradle      # Package com.notetrack.app, release signing
+│       └── src/main/assets/  # Bundled NoteTrack web assets
+├── capacitor.config.json     # App ID: com.notetrack.app, Name: NoteTrack
 ├── src/
 │   ├── main.js               # Electron main process & smoke test runner
 │   ├── preload.js            # Secure context bridge
@@ -87,18 +98,16 @@ npm run web
 │   ├── store.js              # Reactive data store & persistence
 │   ├── styles.css            # Dark/light theme styles
 │   └── components/
-│       ├── editor.js         # Block document editor & slash menu
+│       ├── editor.js         # Block document editor & media deletion
 │       ├── database.js       # 6-in-1 Database views & Row-as-Document
-│       ├── ai.js             # 10 AppFlowy AI prompt templates
-│       ├── palette.js        # Cmd+K command palette & search
+│       ├── ai.js             # 10 prompt templates
+│       ├── palette.js        # Cmd+K command palette & fuzzy search
 │       ├── settings.js       # Settings & diagnostics modal
-│       ├── shell.js          # Sidebar, tabs, breadcrumbs, header
-│       └── io.js             # Markdown and CSV import/export
-├── test/
-│   ├── store.test.js         # Workspace, page hierarchy, trash tests
-│   ├── database.test.js      # All 6 database views & calculations tests
-│   ├── io.test.js            # Markdown & CSV conversion tests
-│   └── ai.test.js            # AI templates & offline heuristics tests
+│       ├── shell.js          # Sidebar, tabs, breadcrumbs, media cleanup
+│       └── io.js             # Markdown, CSV, and ENEX import/export
+├── test/                     # 29 Automated unit & integration tests
 └── scripts/
-    └── serve.js              # Zero-dependency local web server
+    ├── build-android-bundle.sh # Play Store .aab bundle generator
+    ├── build-all-platforms.sh  # Universal cross-platform packaging
+    └── serve.js                # Zero-dependency local web server
 ```

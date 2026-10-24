@@ -1,4 +1,4 @@
-// src/main.js - Electron Main Process for AppFlowy Lean
+// src/main.js - Electron Main Process for NoteTrack
 'use strict';
 
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
@@ -6,12 +6,12 @@ const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
 
-const SMOKE_MODE = process.env.APPFLOWY_SMOKE === '1';
+const SMOKE_MODE = process.env.APPFLOWY_SMOKE === '1' || process.env.NOTETRACK_SMOKE === '1';
 
-app.setName('AppFlowy Lean');
+app.setName('NoteTrack');
 
 if (SMOKE_MODE) {
-  app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'appflowy-smoke-')));
+  app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'notetrack-smoke-')));
 }
 
 let mainWindow = null;
@@ -24,7 +24,7 @@ function createWindow() {
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#12141a',
-    title: 'AppFlowy Lean',
+    title: 'NoteTrack',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -37,7 +37,7 @@ function createWindow() {
   if (SMOKE_MODE) {
     // Automated Smoke Test Runner
     mainWindow.webContents.on('did-finish-load', async () => {
-      console.log('Smoke Mode: Checking AppFlowy Lean subsystems in renderer...');
+      console.log('Smoke Mode: Checking NoteTrack subsystems in renderer...');
       try {
         const result = await mainWindow.webContents.executeJavaScript(`
           (function() {
