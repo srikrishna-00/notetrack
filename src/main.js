@@ -18,6 +18,8 @@ if (SMOKE_MODE) {
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 
+let mainWindow = null;
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1240,
