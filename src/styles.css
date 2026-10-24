@@ -123,6 +123,14 @@ body {
   background-color: var(--bg-primary);
 }
 
+/* Mobile-specific controls hidden by default on desktop */
+.mobile-editor-toolbar,
+.m-sidebar-close-btn,
+.mobile-bottom-nav,
+.mobile-sidebar-backdrop {
+  display: none !important;
+}
+
 /* 1. SIDEBAR */
 .af-sidebar {
   width: 250px;
@@ -331,26 +339,27 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 13.5px;
   color: var(--text-secondary);
-  transition: all var(--transition-fast);
-  border-left: 3px solid transparent;
+  transition: background 0.12s ease, color 0.12s ease;
   user-select: none;
 }
 .tree-item:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
-  transform: translateX(2px);
 }
 .tree-item.is-active {
-  background: var(--accent-tint);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
-  font-weight: 600;
-  border-left-color: var(--accent-color);
-  box-shadow: inset 2px 0 0 var(--accent-color);
+  font-weight: 500;
+}
+[data-theme="light"] .tree-item.is-active {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .tree-arrow {
@@ -634,6 +643,37 @@ body.is-mac-desktop .af-topbar .af-breadcrumbs {
   margin: 0 auto;
 }
 
+.page-hover-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  margin-bottom: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.af-page-header:hover .page-hover-actions {
+  opacity: 1;
+}
+.page-hover-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.page-hover-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 .page-cover-banner {
   height: 180px;
   width: 100%;
@@ -642,49 +682,50 @@ body.is-mac-desktop .af-topbar .af-breadcrumbs {
   position: relative;
   background-size: cover;
   background-position: center;
-  box-shadow: inset 0 -20px 40px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
 .change-cover-btn {
   position: absolute;
   right: 18px;
   bottom: 12px;
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: #fff;
   border-radius: var(--radius-sm);
-  padding: 5px 10px;
+  padding: 4px 10px;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+.page-cover-banner:hover .change-cover-btn {
+  opacity: 1;
 }
 .change-cover-btn:hover {
-  background: rgba(15, 23, 42, 0.95);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.85);
   transform: translateY(-1px);
 }
 
 .page-meta-row {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   align-items: flex-start;
 }
 
 .page-icon-btn {
-  font-size: 44px;
+  font-size: 56px;
   line-height: 1;
   background: transparent;
   border: none;
   cursor: pointer;
   border-radius: var(--radius-md);
   padding: 4px;
-  transition: transform var(--transition-normal);
+  transition: transform 0.15s ease;
 }
 .page-icon-btn:hover {
-  transform: scale(1.08) rotate(-3deg);
+  transform: scale(1.06);
   background: var(--bg-hover);
 }
 
@@ -908,28 +949,27 @@ body.is-mac-desktop .af-topbar .af-breadcrumbs {
 
 .af-callout {
   display: flex;
-  gap: 14px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.01) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.22);
-  border-left: 4px solid var(--accent-color);
-  border-radius: var(--radius-md);
-  padding: 14px 18px;
+  gap: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
   margin: 10px 0;
-  box-shadow: var(--shadow-xs);
+  color: var(--text-primary);
 }
 .callout-icon {
-  font-size: 20px;
+  font-size: 18px;
   flex-shrink: 0;
   line-height: 1.4;
 }
 
 .af-quote {
-  border-left: 3px solid var(--accent-color);
-  padding: 4px 0 4px 18px;
+  border-left: 2px solid var(--border-color);
+  padding: 3px 0 3px 16px;
   color: var(--text-secondary);
   font-style: italic;
-  font-size: 15.5px;
-  line-height: 1.65;
+  font-size: 15px;
+  line-height: 1.6;
   margin: 8px 0;
 }
 

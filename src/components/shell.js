@@ -342,21 +342,27 @@ class AppShell {
       sidebar.appendChild(tagsSection);
     }
 
-    // Bottom Tools: Clean 2-row footer
+    // Bottom Tools: Clean minimalist list (Notion / Linear style)
     const bottomTools = document.createElement('div');
     bottomTools.className = 'sidebar-bottom-tools';
     bottomTools.innerHTML = `
-      <div class="sidebar-footer-row">
-        <button class="sb-tool-btn" id="sb-templates-btn">📋 Templates</button>
-        <button class="sb-tool-btn" id="sb-saved-msg-btn">💬 Saved</button>
-      </div>
-      <div class="sidebar-footer-row">
-        <button class="sb-tool-btn" id="sb-clip-btn">📎 Web Clip</button>
-        <button class="sb-tool-btn" id="sb-trash-btn">
-          <span>🗑️ Trash</span>
-          ${trash.length > 0 ? `<span class="trash-badge">${trash.length}</span>` : ''}
-        </button>
-      </div>
+      <button class="sidebar-nav-item" id="sb-templates-btn">
+        <span class="nav-item-icon">📋</span>
+        <span class="nav-item-label">Templates</span>
+      </button>
+      <button class="sidebar-nav-item" id="sb-saved-msg-btn">
+        <span class="nav-item-icon">💬</span>
+        <span class="nav-item-label">Saved Messages</span>
+      </button>
+      <button class="sidebar-nav-item" id="sb-clip-btn">
+        <span class="nav-item-icon">📎</span>
+        <span class="nav-item-label">Web Clipper</span>
+      </button>
+      <button class="sidebar-nav-item" id="sb-trash-btn">
+        <span class="nav-item-icon">🗑️</span>
+        <span class="nav-item-label">Trash</span>
+        ${trash.length > 0 ? `<span class="trash-badge">${trash.length}</span>` : ''}
+      </button>
     `;
 
     bottomTools.querySelector('#sb-trash-btn').onclick = () => this.showTrashModal();
@@ -602,6 +608,18 @@ class AppShell {
       headerWrap.appendChild(cover);
     }
 
+    // Subtle Hover Actions Bar (Notion style: appears on header hover)
+    const hoverActions = document.createElement('div');
+    hoverActions.className = 'page-hover-actions';
+    if (!page.cover) {
+      const addCoverBtn = document.createElement('button');
+      addCoverBtn.className = 'page-hover-btn';
+      addCoverBtn.innerHTML = '🖼️ Add cover';
+      addCoverBtn.onclick = () => this.showCoverPicker(page);
+      hoverActions.appendChild(addCoverBtn);
+    }
+    headerWrap.appendChild(hoverActions);
+
     // Clean Document Title Row: Icon + Large Title
     const metaRow = document.createElement('div');
     metaRow.className = 'page-meta-row';
@@ -686,15 +704,6 @@ class AppShell {
         c.onclick = () => this.onPageSelect(c.dataset.id);
       });
       headerWrap.appendChild(blWrap);
-    }
-
-    // Cover toggle if not present
-    if (!page.cover) {
-      const addCoverHint = document.createElement('button');
-      addCoverHint.className = 'add-cover-link';
-      addCoverHint.textContent = '+ Add Cover';
-      addCoverHint.onclick = () => this.showCoverPicker(page);
-      headerWrap.appendChild(addCoverHint);
     }
 
     // Apply Notion page style (Font, Small text, Full width)
@@ -1865,12 +1874,16 @@ class AppShell {
   renderMobileEditorToolbar() {
     const toolbar = document.getElementById('mobile-editor-toolbar');
     if (!toolbar) return;
+    if (typeof window !== 'undefined' && window.innerWidth > 768) {
+      toolbar.style.display = 'none';
+      return;
+    }
     const page = this.store.getPage(this.activePageId);
     if (!page || page.type !== 'document') {
       toolbar.style.display = 'none';
       return;
     }
-    toolbar.style.display = '';
+    toolbar.style.display = 'flex';
     toolbar.innerHTML = `
       <button class="m-tool-pill" data-type="paragraph" title="Add Paragraph">+ Text</button>
       <button class="m-tool-pill" data-type="heading" title="Heading 2">H2</button>

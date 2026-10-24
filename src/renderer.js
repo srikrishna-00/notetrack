@@ -13,6 +13,16 @@
     console.warn('Could not read saved workspace from localStorage:', e);
   }
 
+  // Migrate cached data to clean design
+  if (initialData && initialData.pages && initialData.pages['page-welcome']) {
+    if (initialData.pages['page-welcome'].cover === 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)') {
+      initialData.pages['page-welcome'].cover = null;
+    }
+    if (Array.isArray(initialData.pages['page-welcome'].blocks) && initialData.pages['page-welcome'].blocks[0] && initialData.pages['page-welcome'].blocks[0].text === 'Welcome to NoteTrack!') {
+      initialData.pages['page-welcome'].blocks.shift();
+    }
+  }
+
   const store = new AppFlowyStore(initialData);
 
   // High-performance debounced auto-save to localStorage (250ms)

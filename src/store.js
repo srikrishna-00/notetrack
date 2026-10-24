@@ -1142,7 +1142,7 @@ class AppFlowyStore {
           parentId: null,
           title: 'Welcome to NoteTrack',
           icon: '⚡',
-          cover: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+          cover: null,
           type: 'document',
           isFavorite: true,
           isLocked: false,
@@ -1153,8 +1153,7 @@ class AppFlowyStore {
           createdAt: 1729700000000,
           updatedAt: 1729700000000,
           blocks: [
-            { id: 'b1', type: 'heading', level: 1, text: 'Welcome to NoteTrack!' },
-            { id: 'b2', type: 'callout', icon: '💡', text: 'NoteTrack is an ultra-fast, local-first workspace with 100% full feature parity in a fraction of the code.' },
+            { id: 'b2', type: 'callout', icon: '💡', text: 'NoteTrack is an ultra-fast, local-first workspace for notes, tasks, and knowledge.' },
             { id: 'b3', type: 'heading', level: 2, text: 'Features at a glance' },
             { id: 'b4', type: 'todo', text: 'Type / anywhere to open the Slash Command Menu', checked: true },
             { id: 'b5', type: 'todo', text: 'Press Cmd+K to open the Global Command Palette and Search', checked: false },
