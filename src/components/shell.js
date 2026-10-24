@@ -95,6 +95,7 @@ class AppShell {
   }
 
   // Render initial layout skeleton
+  // Render initial layout skeleton
   initLayout() {
     this.container.innerHTML = `
       <div class="af-app-layout">
@@ -106,8 +107,17 @@ class AppShell {
 
         <aside class="af-sidebar" id="af-sidebar"></aside>
         <main class="af-main-viewport">
-          <header class="af-tabs-strip" id="af-tabs-strip"></header>
-          <div class="af-breadcrumbs-bar" id="af-breadcrumbs-bar"></div>
+          <!-- Sleek Unified Top Navigation Bar -->
+          <header class="af-topbar" id="af-topbar">
+            <div class="topbar-left">
+              <button class="topbar-btn" id="btn-toggle-sidebar" title="Toggle Sidebar">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              </button>
+              <div class="af-breadcrumbs-bar" id="af-breadcrumbs-bar"></div>
+            </div>
+            <div class="topbar-center" id="af-tabs-strip" style="display:none;"></div>
+            <div class="topbar-right" id="topbar-actions"></div>
+          </header>
           <div class="af-page-scrollable" id="af-page-scrollable">
             <div class="af-page-header-container" id="af-page-header-container"></div>
             <div class="af-page-view-container" id="af-page-view-container"></div>
@@ -119,6 +129,14 @@ class AppShell {
         <nav class="mobile-bottom-nav" id="mobile-bottom-nav" style="display:none;"></nav>
       </div>
     `;
+
+    const toggleSidebarBtn = document.getElementById('btn-toggle-sidebar');
+    if (toggleSidebarBtn) {
+      toggleSidebarBtn.onclick = () => {
+        const sb = document.getElementById('af-sidebar');
+        if (sb) sb.classList.toggle('is-collapsed');
+      };
+    }
 
     const backdrop = document.getElementById('mobile-sidebar-backdrop');
     if (backdrop) backdrop.onclick = () => this.closeMobileSidebar();
@@ -159,9 +177,10 @@ class AppShell {
     const wsHeader = document.createElement('div');
     wsHeader.className = 'sidebar-ws-header';
     wsHeader.innerHTML = `
-      <div class="ws-info">
+      <div class="ws-info" id="ws-info-btn">
         <span class="ws-logo">⚡</span>
-        <span class="ws-name">${ws.name || 'NoteTrack'}</span>
+        <span class="ws-name">${this.escape(ws.name || 'NoteTrack')}</span>
+        <span class="ws-chevron">▾</span>
       </div>
       <div class="ws-header-actions">
         <button class="ws-settings-btn" title="Settings">⚙️</button>
@@ -169,24 +188,46 @@ class AppShell {
       </div>
     `;
     wsHeader.querySelector('.ws-settings-btn').onclick = () => this.onOpenSettings();
+    wsHeader.querySelector('#ws-info-btn').onclick = () => this.onOpenSettings();
     const closeBtn = wsHeader.querySelector('#m-sidebar-close-btn');
     if (closeBtn) closeBtn.onclick = () => this.closeMobileSidebar();
     sidebar.appendChild(wsHeader);
 
-    // Quick Actions: Search (Cmd+K), AI, Scratchpad & Reminders
-    const quickBar = document.createElement('div');
-    quickBar.className = 'sidebar-quick-bar';
-    quickBar.innerHTML = `
-      <button class="quick-btn" id="sb-search-btn">🔍 Search <kbd>⌘K</kbd></button>
-      <button class="quick-btn" id="sb-ai-btn">✨ AI</button>
-      <button class="quick-btn" id="sb-scratch-btn" title="Quick Scratchpad (Cmd+Shift+N)">📝 Note</button>
-      <button class="quick-btn" id="sb-remind-btn" title="Note Reminders (Cmd+Shift+R)">⏰ Due</button>
+    // Search bar (styled like modern Notion search pill)
+    const searchBox = document.createElement('div');
+    searchBox.className = 'sidebar-search-box';
+    searchBox.id = 'sb-search-btn';
+    searchBox.innerHTML = `
+      <span class="sb-search-icon">🔍</span>
+      <span class="sb-search-label">Search notes...</span>
+      <kbd class="sb-kbd">⌘K</kbd>
     `;
-    quickBar.querySelector('#sb-search-btn').onclick = () => this.onOpenPalette();
-    quickBar.querySelector('#sb-ai-btn').onclick = () => this.onOpenAI();
-    quickBar.querySelector('#sb-scratch-btn').onclick = () => this.showScratchpadModal();
-    quickBar.querySelector('#sb-remind-btn').onclick = () => this.showRemindersModal();
-    sidebar.appendChild(quickBar);
+    searchBox.onclick = () => this.onOpenPalette();
+    sidebar.appendChild(searchBox);
+
+    // Core Quick Navigation
+    const navList = document.createElement('div');
+    navList.className = 'sidebar-nav-list';
+    navList.innerHTML = `
+      <button class="sidebar-nav-item" id="sb-ai-btn">
+        <span class="nav-item-icon">✨</span>
+        <span class="nav-item-label">AI Assistant</span>
+      </button>
+      <button class="sidebar-nav-item" id="sb-scratch-btn">
+        <span class="nav-item-icon">📝</span>
+        <span class="nav-item-label">Quick Scratchpad</span>
+        <kbd class="sb-kbd">⇧⌘N</kbd>
+      </button>
+      <button class="sidebar-nav-item" id="sb-remind-btn">
+        <span class="nav-item-icon">⏰</span>
+        <span class="nav-item-label">Reminders</span>
+        <kbd class="sb-kbd">⇧⌘R</kbd>
+      </button>
+    `;
+    navList.querySelector('#sb-ai-btn').onclick = () => this.onOpenAI();
+    navList.querySelector('#sb-scratch-btn').onclick = () => this.showScratchpadModal();
+    navList.querySelector('#sb-remind-btn').onclick = () => this.showRemindersModal();
+    sidebar.appendChild(navList);
 
     // Spaces Switcher Tabs (Personal / Work / Private)
     const spaceTabs = document.createElement('div');
@@ -194,7 +235,7 @@ class AppShell {
     spaces.forEach(sp => {
       const tab = document.createElement('button');
       tab.className = 'space-tab' + (sp.id === this.activeSpaceId ? ' is-active' : '');
-      tab.innerHTML = `<span class="sp-icon">${sp.icon || '📁'}</span> <span>${sp.name}</span>`;
+      tab.innerHTML = `<span>${this.escape(sp.name)}</span>`;
       tab.onclick = () => {
         this.activeSpaceId = sp.id;
         this.updateSidebar();
@@ -208,7 +249,7 @@ class AppShell {
     if (pinned.length > 0) {
       const pinSection = document.createElement('div');
       pinSection.className = 'sidebar-section sidebar-pinned-section';
-      pinSection.innerHTML = '<div class="sidebar-section-title">📌 Pinned Notes</div>';
+      pinSection.innerHTML = '<div class="sidebar-section-title"><span>📌 Pinned</span></div>';
       const pinList = document.createElement('div');
       pinList.className = 'sidebar-tree';
       pinned.forEach(p => {
@@ -226,7 +267,7 @@ class AppShell {
     if (favorites.length > 0) {
       const favSection = document.createElement('div');
       favSection.className = 'sidebar-section';
-      favSection.innerHTML = '<div class="sidebar-section-title">⭐ Favorites</div>';
+      favSection.innerHTML = '<div class="sidebar-section-title"><span>⭐ Favorites</span></div>';
       const favList = document.createElement('div');
       favList.className = 'sidebar-tree';
 
@@ -247,8 +288,8 @@ class AppShell {
     pagesSection.className = 'sidebar-section sidebar-pages-section';
     pagesSection.innerHTML = `
       <div class="sidebar-section-title">
-        <span>Workspace</span>
-        <div style="display:flex;gap:4px;">
+        <span>Pages</span>
+        <div class="section-actions" style="display:flex;gap:4px;">
           <button class="section-add-btn" id="btn-add-folder" title="New Folder">📁+</button>
           <button class="section-add-btn" id="btn-add-root-page" title="New Page">+</button>
         </div>
@@ -290,18 +331,21 @@ class AppShell {
       sidebar.appendChild(tagsSection);
     }
 
-    // Bottom Tools: Trash, Clipper, Templates & Add Page
+    // Bottom Tools: Clean 2-row footer
     const bottomTools = document.createElement('div');
     bottomTools.className = 'sidebar-bottom-tools';
     bottomTools.innerHTML = `
-      <button class="sb-tool-btn" id="sb-trash-btn">
-        <span>🗑️ Trash</span>
-        ${trash.length > 0 ? `<span class="trash-badge">${trash.length}</span>` : ''}
-      </button>
-      <button class="sb-tool-btn" id="sb-saved-msg-btn" title="Telegram Saved Messages">💬 Saved</button>
-      <button class="sb-tool-btn" id="sb-clip-btn" title="Evernote Web Clipper (Cmd+Shift+C)">📎 Clip</button>
-      <button class="sb-tool-btn" id="sb-templates-btn">📋 Templates</button>
-      <button class="sb-tool-btn" id="sb-new-doc-btn">+ New</button>
+      <div class="sidebar-footer-row">
+        <button class="sb-tool-btn" id="sb-templates-btn">📋 Templates</button>
+        <button class="sb-tool-btn" id="sb-saved-msg-btn">💬 Saved</button>
+      </div>
+      <div class="sidebar-footer-row">
+        <button class="sb-tool-btn" id="sb-clip-btn">📎 Web Clip</button>
+        <button class="sb-tool-btn" id="sb-trash-btn">
+          <span>🗑️ Trash</span>
+          ${trash.length > 0 ? `<span class="trash-badge">${trash.length}</span>` : ''}
+        </button>
+      </div>
     `;
 
     bottomTools.querySelector('#sb-trash-btn').onclick = () => this.showTrashModal();
@@ -320,10 +364,6 @@ class AppShell {
     };
     bottomTools.querySelector('#sb-clip-btn').onclick = () => this.showWebClipperModal();
     bottomTools.querySelector('#sb-templates-btn').onclick = () => this.showTemplatesModal();
-    bottomTools.querySelector('#sb-new-doc-btn').onclick = () => {
-      const p = this.store.createPage({ spaceId: this.activeSpaceId, title: 'Untitled' });
-      this.onPageSelect(p.id);
-    };
 
     sidebar.appendChild(bottomTools);
   }
@@ -442,7 +482,7 @@ class AppShell {
     strip.appendChild(addTabBtn);
   }
 
-  // 3. BREADCRUMBS & HEADER
+  // 3. BREADCRUMBS & TOPBAR ACTIONS & HEADER
   updateHeader() {
     const page = this.store.getPage(this.activePageId);
     if (!page) return;
@@ -450,7 +490,7 @@ class AppShell {
     this.updateMobileAppbar();
     this.renderMobileEditorToolbar();
 
-    // Breadcrumbs
+    // 1. Breadcrumbs in Top Bar
     const breadcrumbs = document.getElementById('af-breadcrumbs-bar');
     if (breadcrumbs) {
       const trail = [];
@@ -460,10 +500,10 @@ class AppShell {
         curr = curr.parentId ? this.store.getPage(curr.parentId) : null;
       }
       breadcrumbs.innerHTML = `
-        <span class="bc-space">${this.activeSpaceId.replace('space-', '')}</span>
+        <span class="bc-space">${this.escape(this.activeSpaceId.replace('space-', ''))}</span>
         ${trail.map((p, idx) => `
           <span class="bc-sep">/</span>
-          <span class="bc-item ${idx === trail.length - 1 ? 'is-current' : ''}" data-id="${p.id}">${p.title}</span>
+          <span class="bc-item ${idx === trail.length - 1 ? 'is-current' : ''}" data-id="${p.id}">${this.escape(p.title || 'Untitled')}</span>
         `).join('')}
       `;
       breadcrumbs.querySelectorAll('.bc-item').forEach(el => {
@@ -471,7 +511,66 @@ class AppShell {
       });
     }
 
-    // Page Header (Cover + Icon + Title + Actions)
+    // 2. Minimalist Actions Cluster in Topbar Right
+    const topbarActions = document.getElementById('topbar-actions');
+    if (topbarActions) {
+      topbarActions.innerHTML = '';
+
+      // Notepad toggle button
+      if (page.type !== 'database' && page.type !== 'folder') {
+        const isNp = page.type === 'notepad';
+        const npBtn = document.createElement('button');
+        npBtn.className = 'topbar-action-pill' + (isNp ? ' is-active' : '');
+        npBtn.innerHTML = `<span>${isNp ? '📑 Rich Text' : '📝 Notepad'}</span>`;
+        npBtn.title = isNp ? 'Switch to Rich Block Editor' : 'Switch to Plain Text Notepad';
+        npBtn.onclick = () => {
+          if (typeof window !== 'undefined' && window.toggleNotepadMode) {
+            window.toggleNotepadMode(page.id);
+          }
+        };
+        topbarActions.appendChild(npBtn);
+      }
+
+      // Ask AI button
+      const aiBtn = document.createElement('button');
+      aiBtn.className = 'topbar-action-pill';
+      aiBtn.innerHTML = '<span>✨ AI</span>';
+      aiBtn.title = 'Ask AI Assistant';
+      aiBtn.onclick = () => this.onOpenAI();
+      topbarActions.appendChild(aiBtn);
+
+      // Favorite toggle button
+      const favBtn = document.createElement('button');
+      favBtn.className = 'topbar-icon-btn' + (page.isFavorite ? ' is-favorite' : '');
+      favBtn.innerHTML = page.isFavorite ? '★' : '☆';
+      favBtn.title = page.isFavorite ? 'Remove from Favorites' : 'Add to Favorites';
+      favBtn.onclick = () => {
+        this.store.toggleFavorite(page.id);
+        this.updateHeader();
+      };
+      topbarActions.appendChild(favBtn);
+
+      // More Options (⋯)
+      const moreBtn = document.createElement('button');
+      moreBtn.className = 'topbar-icon-btn';
+      moreBtn.innerHTML = '⋯';
+      moreBtn.title = 'Page options (Lock, Export, Style, Delete)';
+      moreBtn.onclick = (e) => this.showPageOptionsMenu(e, page);
+      topbarActions.appendChild(moreBtn);
+
+      // + New Note button
+      const newBtn = document.createElement('button');
+      newBtn.className = 'topbar-btn-primary';
+      newBtn.innerHTML = '<span>+</span> New';
+      newBtn.title = 'Create new page';
+      newBtn.onclick = () => {
+        const p = this.store.createPage({ spaceId: this.activeSpaceId, title: 'Untitled' });
+        this.onPageSelect(p.id);
+      };
+      topbarActions.appendChild(newBtn);
+    }
+
+    // 3. Document Header (Cover + Icon + Clean Title + Tags)
     const headerContainer = document.getElementById('af-page-header-container');
     if (!headerContainer) return;
 
@@ -492,18 +591,16 @@ class AppShell {
       headerWrap.appendChild(cover);
     }
 
-    // Page Title Row & Action Buttons
+    // Clean Document Title Row: Icon + Large Title
     const metaRow = document.createElement('div');
     metaRow.className = 'page-meta-row';
 
-    // Icon button
     const iconBtn = document.createElement('button');
     iconBtn.className = 'page-icon-btn';
     iconBtn.textContent = page.icon || '📄';
     iconBtn.title = 'Change Icon';
     iconBtn.onclick = () => this.showEmojiPicker(page);
 
-    // Title input
     const titleInput = document.createElement('h1');
     titleInput.className = 'page-title-input';
     titleInput.contentEditable = !page.isLocked ? 'true' : 'false';
@@ -514,88 +611,18 @@ class AppShell {
       this.updateTabs();
     };
 
-    // Actions
-    const actionGroup = document.createElement('div');
-    actionGroup.className = 'page-actions-group';
-
-    const favBtn = document.createElement('button');
-    favBtn.className = 'page-act-icon-btn' + (page.isFavorite ? ' is-favorite' : '');
-    favBtn.innerHTML = page.isFavorite ? '★' : '☆';
-    favBtn.title = page.isFavorite ? 'Remove Favorite' : 'Add to Favorites';
-    favBtn.onclick = () => {
-      this.store.toggleFavorite(page.id);
-      this.updateHeader();
-    };
-
-    const lockBtn = document.createElement('button');
-    lockBtn.className = 'page-act-icon-btn' + (page.isLocked ? ' is-locked' : '');
-    lockBtn.innerHTML = page.isLocked ? '🔒' : '🔓';
-    lockBtn.title = page.isLocked ? 'Page is locked (Read Only)' : 'Lock page';
-    lockBtn.onclick = () => {
-      this.store.toggleLock(page.id);
-      this.onPageSelect(page.id);
-    };
-
-    const exportBtn = document.createElement('button');
-    exportBtn.className = 'page-act-icon-btn';
-    exportBtn.innerHTML = '📥';
-    exportBtn.title = 'Export (Markdown / CSV)';
-    exportBtn.onclick = () => this.onExportPage(page);
-
-    const aiBtn = document.createElement('button');
-    aiBtn.className = 'page-act-icon-btn';
-    aiBtn.innerHTML = '✨';
-    aiBtn.title = 'Ask AI about this page';
-    aiBtn.onclick = () => this.onOpenAI();
-
-    // Notion Feature: Page Options (⋯ Menu)
-    const moreBtn = document.createElement('button');
-    moreBtn.className = 'page-act-icon-btn';
-    moreBtn.innerHTML = '⋯';
-    moreBtn.title = 'Page Style & Typography (Notion Options)';
-    moreBtn.onclick = (e) => this.showPageOptionsMenu(e, page);
-
-    // Direct Delete & Cleanup Options Button
-    const trashBtn = document.createElement('button');
-    trashBtn.className = 'page-act-icon-btn btn-header-trash';
-    trashBtn.innerHTML = '🗑️';
-    trashBtn.title = 'Delete options (Voice, Image, Document)';
-    trashBtn.onclick = () => this.showMediaCleanupModal(page);
-
-    actionGroup.appendChild(favBtn);
-    actionGroup.appendChild(lockBtn);
-    actionGroup.appendChild(exportBtn);
-    actionGroup.appendChild(aiBtn);
-    actionGroup.appendChild(moreBtn);
-    actionGroup.appendChild(trashBtn);
-
-    if (page.type !== 'database' && page.type !== 'folder') {
-      const npBtn = document.createElement('button');
-      npBtn.className = 'page-act-icon-btn btn-header-notepad';
-      npBtn.innerHTML = '📝';
-      npBtn.title = 'Toggle Plain Text Notepad Mode';
-      npBtn.onclick = () => {
-        if (typeof window !== 'undefined' && window.toggleNotepadMode) {
-          window.toggleNotepadMode(page.id);
-        }
-      };
-      actionGroup.appendChild(npBtn);
-    }
-
     metaRow.appendChild(iconBtn);
     metaRow.appendChild(titleInput);
-    metaRow.appendChild(actionGroup);
-
     headerWrap.appendChild(metaRow);
 
-    // Evernote Feature: Tag Chips & Reminder Status Bar
+    // Tags Bar
     const tagsRow = document.createElement('div');
     tagsRow.className = 'page-tags-bar';
     const currentTags = Array.isArray(page.tags) ? page.tags : [];
     
     tagsRow.innerHTML = `
       <div class="page-tags-list">
-        ${currentTags.map(t => `<span class="page-tag-chip" data-tag="${t}">${t} <span class="tag-del-btn" title="Remove tag">✕</span></span>`).join('')}
+        ${currentTags.map(t => `<span class="page-tag-chip" data-tag="${t}">${this.escape(t)} <span class="tag-del-btn" title="Remove tag">✕</span></span>`).join('')}
         <button class="add-tag-chip-btn">+ Tag</button>
       </div>
       ${page.reminderDate ? `
