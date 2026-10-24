@@ -55,24 +55,49 @@ class AppShell {
   initLayout() {
     this.container.innerHTML = `
       <div class="af-app-layout">
+        <!-- Mobile Sidebar Backdrop Overlay -->
+        <div class="mobile-sidebar-backdrop" id="mobile-sidebar-backdrop"></div>
+
+        <!-- Android Material Top App Bar (Visible <= 768px) -->
+        <header class="mobile-appbar" id="mobile-appbar" style="display:none;"></header>
+
         <aside class="af-sidebar" id="af-sidebar"></aside>
         <main class="af-main-viewport">
           <header class="af-tabs-strip" id="af-tabs-strip"></header>
           <div class="af-breadcrumbs-bar" id="af-breadcrumbs-bar"></div>
-          <div class="af-page-scrollable">
+          <div class="af-page-scrollable" id="af-page-scrollable">
             <div class="af-page-header-container" id="af-page-header-container"></div>
             <div class="af-page-view-container" id="af-page-view-container"></div>
           </div>
+          <!-- Mobile Floating Editing Accessory Toolbar -->
+          <div class="mobile-editor-toolbar" id="mobile-editor-toolbar" style="display:none;"></div>
         </main>
         <aside class="af-ai-drawer" id="af-ai-drawer"></aside>
         <nav class="mobile-bottom-nav" id="mobile-bottom-nav" style="display:none;"></nav>
       </div>
     `;
 
+    const backdrop = document.getElementById('mobile-sidebar-backdrop');
+    if (backdrop) backdrop.onclick = () => this.closeMobileSidebar();
+
     this.updateSidebar();
     this.updateTabs();
     this.updateHeader();
     this.renderMobileBottomBar();
+  }
+
+  toggleMobileSidebar() {
+    const sidebar = document.getElementById('af-sidebar');
+    const backdrop = document.getElementById('mobile-sidebar-backdrop');
+    if (sidebar) sidebar.classList.toggle('is-mobile-open');
+    if (backdrop) backdrop.classList.toggle('is-active');
+  }
+
+  closeMobileSidebar() {
+    const sidebar = document.getElementById('af-sidebar');
+    const backdrop = document.getElementById('mobile-sidebar-backdrop');
+    if (sidebar) sidebar.classList.remove('is-mobile-open');
+    if (backdrop) backdrop.classList.remove('is-active');
   }
 
   // 1. SIDEBAR
@@ -95,9 +120,14 @@ class AppShell {
         <span class="ws-logo">⚡</span>
         <span class="ws-name">${ws.name || 'NoteTrack'}</span>
       </div>
-      <button class="ws-settings-btn" title="Settings">⚙️</button>
+      <div class="ws-header-actions">
+        <button class="ws-settings-btn" title="Settings">⚙️</button>
+        <button class="m-sidebar-close-btn" id="m-sidebar-close-btn" title="Close Drawer">✕</button>
+      </div>
     `;
     wsHeader.querySelector('.ws-settings-btn').onclick = () => this.onOpenSettings();
+    const closeBtn = wsHeader.querySelector('#m-sidebar-close-btn');
+    if (closeBtn) closeBtn.onclick = () => this.closeMobileSidebar();
     sidebar.appendChild(wsHeader);
 
     // Quick Actions: Search (Cmd+K), AI, Scratchpad & Reminders
@@ -333,6 +363,9 @@ class AppShell {
   updateHeader() {
     const page = this.store.getPage(this.activePageId);
     if (!page) return;
+
+    this.updateMobileAppbar();
+    this.renderMobileEditorToolbar();
 
     // Breadcrumbs
     const breadcrumbs = document.getElementById('af-breadcrumbs-bar');
@@ -1512,23 +1545,34 @@ class AppShell {
     };
   }
 
-  // Cross-Platform Mobile Bottom Navigation Bar
+  // Cross-Platform Android Material Bottom Navigation Bar
   renderMobileBottomBar() {
     const nav = document.getElementById('mobile-bottom-nav');
     if (!nav) return;
 
     nav.innerHTML = `
-      <button class="nav-btn" id="m-btn-sidebar" title="Pages">📂</button>
-      <button class="nav-btn" id="m-btn-search" title="Search">🔍</button>
-      <button class="nav-btn btn-nav-new" id="m-btn-new" title="New Page" style="font-size:18px;font-weight:700;color:var(--accent-color);">+</button>
-      <button class="nav-btn" id="m-btn-scratch" title="Scratchpad">⚡</button>
-      <button class="nav-btn" id="m-btn-settings" title="Settings">⚙️</button>
+      <button class="nav-btn" id="m-btn-sidebar" title="Notes">
+        <span class="nav-icon">📂</span>
+        <span class="nav-label">Notes</span>
+      </button>
+      <button class="nav-btn" id="m-btn-search" title="Search">
+        <span class="nav-icon">🔍</span>
+        <span class="nav-label">Search</span>
+      </button>
+      <button class="nav-btn btn-nav-fab" id="m-btn-new" title="New Note">
+        <span class="fab-circle">+</span>
+      </button>
+      <button class="nav-btn" id="m-btn-scratch" title="Scratchpad">
+        <span class="nav-icon">⚡</span>
+        <span class="nav-label">Quick</span>
+      </button>
+      <button class="nav-btn" id="m-btn-settings" title="Settings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Settings</span>
+      </button>
     `;
 
-    nav.querySelector('#m-btn-sidebar').onclick = () => {
-      const sidebar = document.getElementById('af-sidebar');
-      if (sidebar) sidebar.classList.toggle('is-mobile-open');
-    };
+    nav.querySelector('#m-btn-sidebar').onclick = () => this.toggleMobileSidebar();
     nav.querySelector('#m-btn-search').onclick = () => {
       if (typeof PaletteModal !== 'undefined') new PaletteModal({ store: this.store, onSelect: (id) => this.onPageSelect(id) }).show();
     };
@@ -1540,6 +1584,72 @@ class AppShell {
     nav.querySelector('#m-btn-settings').onclick = () => {
       if (typeof SettingsModal !== 'undefined') new SettingsModal({ store: this.store }).show();
     };
+  }
+
+  updateMobileAppbar() {
+    const bar = document.getElementById('mobile-appbar');
+    if (!bar) return;
+    const page = this.store.getPage(this.activePageId);
+    if (!page) return;
+
+    bar.innerHTML = `
+      <div class="m-appbar-left">
+        <button class="m-appbar-btn" id="m-appbar-drawer-btn" title="Open Navigation Drawer">☰</button>
+        <span class="m-appbar-icon" id="m-appbar-icon-btn" title="Change Icon">${page.icon || '📄'}</span>
+        <span class="m-appbar-title" title="${page.title}">${page.title || 'Untitled'}</span>
+      </div>
+      <div class="m-appbar-right">
+        <button class="m-appbar-btn" id="m-appbar-ai-btn" title="AI Companion">✨</button>
+        <button class="m-appbar-btn" id="m-appbar-search-btn" title="Search">🔍</button>
+        <button class="m-appbar-btn" id="m-appbar-more-btn" title="Page Options">⋮</button>
+      </div>
+    `;
+
+    bar.querySelector('#m-appbar-drawer-btn').onclick = () => this.toggleMobileSidebar();
+    bar.querySelector('#m-appbar-icon-btn').onclick = () => this.showEmojiPicker(page);
+    bar.querySelector('#m-appbar-ai-btn').onclick = () => this.onOpenAI();
+    bar.querySelector('#m-appbar-search-btn').onclick = () => this.onOpenPalette();
+    bar.querySelector('#m-appbar-more-btn').onclick = (e) => this.showPageOptionsMenu(e, page);
+  }
+
+  renderMobileEditorToolbar() {
+    const toolbar = document.getElementById('mobile-editor-toolbar');
+    if (!toolbar) return;
+    const page = this.store.getPage(this.activePageId);
+    if (!page || page.type !== 'document') {
+      toolbar.style.display = 'none';
+      return;
+    }
+    toolbar.style.display = '';
+    toolbar.innerHTML = `
+      <button class="m-tool-pill" data-type="paragraph" title="Add Paragraph">+ Text</button>
+      <button class="m-tool-pill" data-type="heading" title="Heading 2">H2</button>
+      <button class="m-tool-pill" data-type="todo" title="Todo Checklist">☑ Todo</button>
+      <button class="m-tool-pill" data-type="audio" title="Voice Memo">🎙️ Voice</button>
+      <button class="m-tool-pill" data-type="image" title="Photo / Image">📷 Photo</button>
+      <button class="m-tool-pill" data-type="bullet" title="Bullet List">• Bullet</button>
+      <button class="m-tool-pill" data-type="code" title="Code Block">&lt;&gt; Code</button>
+      <button class="m-tool-pill" data-type="slash" title="Commands">/ Menu</button>
+    `;
+
+    toolbar.querySelectorAll('.m-tool-pill').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const type = btn.dataset.type;
+        if (type === 'slash') {
+          this.onOpenPalette();
+          return;
+        }
+        let newBlock = { type, text: '' };
+        if (type === 'heading') newBlock = { type: 'heading', level: 2, text: '' };
+        if (type === 'todo') newBlock = { type: 'todo', text: '', checked: false };
+        if (type === 'audio') newBlock = { type: 'audio', audioData: null, duration: 0, title: 'Voice Memo' };
+        if (type === 'image') newBlock = { type: 'image', url: '', caption: '' };
+        if (type === 'code') newBlock = { type: 'code', text: '', language: 'javascript' };
+        this.store.insertBlock(this.activePageId, newBlock);
+        this.onPageSelect(this.activePageId);
+      };
+    });
   }
 
   // Dedicated Selective Media & Content Cleanup Modal

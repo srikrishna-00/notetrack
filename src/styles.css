@@ -2345,68 +2345,428 @@ body {
   filter: brightness(1.1);
 }
 
-/* Mobile & Tablet Responsive Layouts */
+/* ==========================================================
+   ADAPTIVE SCREEN-SIZE & MOBILE OPTIMIZATIONS
+   ========================================================== */
+
+/* 1. Mobile Phones (Screen width <= 768px, portrait & Android) */
 @media (max-width: 768px) {
-  .af-columns-layout {
-    grid-template-columns: 1fr !important;
+  /* Safe-area insets for notched & punch-hole Android/iOS screens */
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
-  .af-tabs-strip {
+
+  /* Hide Desktop-only chrome */
+  .af-tabs-strip,
+  .af-breadcrumbs-bar {
     display: none !important;
   }
+
+  /* Single Column Layout on small screens */
+  .af-columns-layout {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Material Design Top App Bar */
+  .mobile-appbar {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 85;
+    padding: 0 12px;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  }
+
+  .m-appbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .m-appbar-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .m-appbar-icon {
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  .m-appbar-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 20px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .m-appbar-btn:active {
+    background: var(--bg-hover);
+  }
+
+  .m-appbar-right {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /* Backdrop Overlay for Slide-out Drawer */
+  .mobile-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 95;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .mobile-sidebar-backdrop.is-active {
+    display: block !important;
+    opacity: 1 !important;
+  }
+
+  /* Native Slide-out Navigation Drawer */
   .af-sidebar, .app-sidebar {
     position: fixed !important;
-    z-index: 100;
-    left: -280px;
-    top: 0;
-    bottom: 54px;
-    width: 280px;
-    transition: left 0.25s ease;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.5);
-    background-color: var(--bg-secondary);
+    z-index: 100 !important;
+    left: -300px !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 290px !important;
+    max-width: 85vw !important;
+    transition: transform 0.28s cubic-bezier(0.1, 0.9, 0.2, 1), left 0.28s ease !important;
+    box-shadow: 6px 0 24px rgba(0, 0, 0, 0.6) !important;
+    background-color: var(--bg-secondary) !important;
+    padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
   }
   .af-sidebar.is-mobile-open, .app-sidebar.is-mobile-open {
     left: 0 !important;
+    transform: translateX(0) !important;
   }
+
+  .ws-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .m-sidebar-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 18px;
+    padding: 6px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+  }
+  .m-sidebar-close-btn:hover {
+    color: var(--text-primary);
+  }
+
+  /* Main Viewport Adjustments */
   .af-main-viewport {
-    width: 100vw;
-    min-width: 100vw;
+    width: 100vw !important;
+    min-width: 100vw !important;
+    padding-top: 56px !important;
   }
+
   .af-page-scrollable {
-    padding-bottom: 70px;
+    padding-bottom: 110px !important; /* Extra room for mobile toolbars */
   }
+
+  /* Page Header Mobile Redesign */
+  .af-page-header {
+    padding: 14px 16px 8px !important;
+  }
+  .page-cover-banner {
+    height: 100px !important;
+  }
+  .change-cover-btn {
+    right: 12px !important;
+    bottom: 8px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+  }
+  .page-meta-row {
+    gap: 10px !important;
+  }
+  .page-icon-btn {
+    font-size: 26px !important;
+  }
+  .page-title-input {
+    font-size: 22px !important;
+    line-height: 1.3 !important;
+  }
+  .page-actions-group {
+    display: none !important; /* Actions moved to Top App Bar ⋮ menu */
+  }
+
+  /* Block Document Editor Touch Optimization */
+  .af-editor-wrap {
+    padding: 4px 16px 80px !important;
+    max-width: 100% !important;
+  }
+  .block-row {
+    padding: 4px 0 !important;
+  }
+  .block-tools {
+    position: static !important;
+    display: flex !important;
+    margin-right: 6px !important;
+    opacity: 0.7;
+  }
+  .block-tools .tool-btn {
+    font-size: 14px !important;
+    padding: 4px 6px !important;
+    min-height: 32px !important;
+    min-width: 28px !important;
+  }
+
+  /* Mobile Quick Block Editing Toolbar (Floating accessory bar) */
+  .mobile-editor-toolbar {
+    display: flex !important;
+    position: fixed;
+    bottom: 58px;
+    left: 0;
+    right: 0;
+    height: 44px;
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+    z-index: 80;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 4px 10px;
+    gap: 8px;
+    align-items: center;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .m-tool-pill {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 12px;
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+  }
+  .m-tool-pill:active {
+    background: var(--accent-tint);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: scale(0.95);
+  }
+
+  /* Android Material Design Bottom Navigation Bar */
   .mobile-bottom-nav {
     display: flex !important;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 54px;
+    height: 58px;
     background: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
     z-index: 90;
     justify-content: space-around;
     align-items: center;
+    padding: 0 4px;
   }
   .mobile-bottom-nav .nav-btn {
     background: none;
     border: none;
-    color: var(--text-secondary);
-    font-size: 20px;
-    cursor: pointer;
-    padding: 6px 12px;
-  }
-  .mobile-bottom-nav .nav-btn:active {
-    transform: scale(0.92);
-  }
-  .version-history-modal {
+    color: var(--text-muted);
+    display: flex;
     flex-direction: column;
-    height: 80vh;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    padding: 4px 10px;
+    flex: 1;
+    min-height: 48px;
+    transition: color 0.15s ease;
   }
-  .version-list-pane {
-    width: 100%;
-    height: 180px;
-    border-right: none;
-    border-bottom: 1px solid var(--border-color);
+  .mobile-bottom-nav .nav-btn:active,
+  .mobile-bottom-nav .nav-btn.is-active {
+    color: var(--accent-color);
+  }
+  .mobile-bottom-nav .nav-icon {
+    font-size: 19px;
+    line-height: 1;
+  }
+  .mobile-bottom-nav .nav-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+
+  /* Elevated Floating Action Button (FAB) in Center */
+  .mobile-bottom-nav .btn-nav-fab {
+    flex: 0 0 54px;
+    position: relative;
+    top: -12px;
+    padding: 0;
+  }
+  .fab-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: var(--accent-color);
+    color: #ffffff;
+    font-size: 26px;
+    font-weight: 300;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.45);
+    transition: transform 0.15s ease;
+  }
+  .btn-nav-fab:active .fab-circle {
+    transform: scale(0.9);
+  }
+
+  /* Bottom Sheet Modals (Android Material 3) */
+  .af-modal-backdrop {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .af-cleanup-modal-box,
+  .settings-modal-box,
+  .scratchpad-modal-box,
+  .reminders-modal-box,
+  .palette-modal-box,
+  .af-modal-box,
+  .version-history-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 24px 24px 0 0 !important;
+    border-bottom: none !important;
+    max-height: 85vh !important;
+    margin: 0 !important;
+    box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.5) !important;
+    animation: slideUpSheet 0.26s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  @keyframes slideUpSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .af-notion-page-menu {
+    position: fixed !important;
+    bottom: 0 !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 24px 24px 0 0 !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+    box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.6) !important;
+    padding: 16px 20px 32px !important;
+    z-index: 2000 !important;
+    animation: slideUpSheet 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* Database Views Mobile Optimization */
+  .af-db-topbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 4px 12px !important;
+  }
+  .af-db-view-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .af-db-view-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .db-view-tab {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    padding: 5px 10px !important;
+  }
+  .af-db-controls {
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    padding-bottom: 4px !important;
+  }
+
+  /* Spreadsheet Grid Table Touch Scrolling */
+  .af-database-table-wrap,
+  .af-database-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+  table.af-database-table {
+    min-width: 580px !important;
+  }
+
+  /* Kanban Board Touch Swipe */
+  .af-board-wrapper {
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 8px 16px !important;
+    gap: 12px !important;
+  }
+  .board-column {
+    scroll-snap-align: center !important;
+    width: 82vw !important;
+    min-width: 82vw !important;
+  }
+}
+
+/* 2. Tablets & Foldables (601px - 1024px) */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .af-sidebar, .app-sidebar {
+    width: 220px !important;
+    min-width: 220px !important;
+  }
+  .af-page-header {
+    padding: 20px 24px 10px !important;
+  }
+  .af-editor-wrap {
+    padding: 10px 24px 60px !important;
+    max-width: 100% !important;
   }
 }
 
