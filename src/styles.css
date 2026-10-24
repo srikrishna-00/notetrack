@@ -1696,3 +1696,408 @@ body {
   color: #a855f7;
   font-weight: 600;
 }
+
+/* ==========================================================================
+   EVERNOTE SIGNATURE FEATURE STYLES
+   ========================================================================== */
+
+/* 1. Global Tags in Sidebar */
+.tag-badge {
+  margin-left: auto;
+  background: var(--bg-primary);
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.tag-hash {
+  color: var(--accent-color);
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+/* 2. Note Header Tag Chips & Reminders */
+.page-tags-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0 10px 0;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.page-tags-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.page-tag-chip {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.page-tag-chip:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+.tag-del-btn {
+  font-size: 9px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tag-del-btn:hover {
+  color: #ef4444;
+}
+.add-tag-chip-btn {
+  background: none;
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.add-tag-chip-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+.page-reminder-pill {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.page-reminder-pill.is-done {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+/* 3. Quick Scratchpad */
+.af-scratchpad-box {
+  width: 520px;
+  max-width: 90vw;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.scratchpad-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.scratchpad-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.scratchpad-textarea {
+  width: 100%;
+  height: 180px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+}
+.scratchpad-textarea:focus {
+  border-color: var(--accent-color);
+}
+.scratchpad-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.scratchpad-saved-hint {
+  font-size: 11px;
+  color: #10b981;
+}
+.btn-convert-note {
+  background: var(--accent-color);
+  border: none;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* 4. Reminders Manager Modal */
+.af-reminders-box {
+  width: 560px;
+  max-width: 90vw;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.reminders-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.reminders-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-overdue { color: #ef4444; }
+.badge-upcoming { color: #f59e0b; }
+.badge-completed { color: #10b981; }
+.reminder-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  font-size: 13px;
+}
+.reminder-item-row:hover {
+  background: rgba(0, 102, 204, 0.08);
+}
+.reminder-note-title {
+  flex: 1;
+  color: var(--text-primary);
+}
+.reminder-due-date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 5. Web Clipper & Dialog Modals */
+.af-clipper-box {
+  width: 540px;
+  max-width: 90vw;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.clipper-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.clipper-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.clipper-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.clipper-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.clipper-input, .clipper-textarea, .dialog-input {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 7px 10px;
+  font-size: 13px;
+  outline: none;
+}
+.clipper-textarea {
+  height: 90px;
+  resize: none;
+  font-family: inherit;
+}
+.clipper-actions, .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+.af-dialog-box {
+  width: 480px;
+  max-width: 90vw;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.info-table th {
+  text-align: left;
+  color: var(--text-muted);
+  padding: 6px 0;
+  width: 35%;
+}
+.info-table td {
+  color: var(--text-primary);
+  padding: 6px 0;
+}
+.tag-note-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+.tag-note-item:hover {
+  background: rgba(0, 102, 204, 0.08);
+}
+
+/* 6. Audio Voice Memo Block */
+.af-audio-block {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.audio-header {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.audio-player-area {
+  display: flex;
+  align-items: center;
+}
+.audio-player-area audio {
+  width: 100%;
+  height: 36px;
+}
+.audio-placeholder {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.audio-btn-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn-record-audio {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-record-audio.is-recording {
+  background: #dc2626;
+  animation: pulse 1.2s infinite;
+}
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+.audio-url-input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+/* 7. Web Clip Block */
+.af-clip-block {
+  background: var(--bg-tertiary);
+  border-left: 3px solid #10b981;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 12px 16px;
+  margin: 12px 0;
+}
+.clip-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.clip-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.clip-link {
+  color: var(--accent-color);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+.clip-date {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+.clip-title {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.clip-quote {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}

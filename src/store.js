@@ -54,7 +54,11 @@ class AppFlowyStore {
     type = 'document',
     fontFamily = 'sans',
     smallText = false,
-    fullWidth = false
+    fullWidth = false,
+    tags = [],
+    reminderDate = null,
+    reminderDone = false,
+    sourceUrl = null
   } = {}) {
     const id = 'page-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
     const now = Date.now();
@@ -73,6 +77,10 @@ class AppFlowyStore {
       fontFamily, // 'sans' | 'serif' | 'mono'
       smallText,
       fullWidth,
+      tags: Array.isArray(tags) ? [...tags] : [],
+      reminderDate: reminderDate || null,
+      reminderDone: Boolean(reminderDone),
+      sourceUrl: sourceUrl || null,
       createdAt: now,
       updatedAt: now,
       blocks: type === 'document' ? [
@@ -743,9 +751,137 @@ class AppFlowyStore {
     }
   }
 
+  // =========================================================================
+  // EVERNOTE CORE SUITE: Tags, Reminders, Scratchpad & Quick Capture
+  // =========================================================================
+
+  // Evernote Feature 1: Global Workspace-wide Tags System
+  getAllTags() {
+    const counts = {};
+    for (const page of Object.values(this.data.pages)) {
+      if (page.inTrash || !Array.isArray(page.tags)) continue;
+      for (const t of page.tags) {
+        const clean = String(t).trim().toLowerCase();
+        if (clean) counts[clean] = (counts[clean] || 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => a.tag.localeCompare(b.tag));
+  }
+
+  getPagesByTag(tag) {
+    const target = String(tag).trim().toLowerCase();
+    return Object.values(this.data.pages).filter(p => {
+      if (p.inTrash || !Array.isArray(p.tags)) return false;
+      return p.tags.some(t => String(t).trim().toLowerCase() === target);
+    });
+  }
+
+  addTagToPage(pageId, tag) {
+    const page = this.data.pages[pageId];
+    if (!page || !tag) return false;
+    if (!Array.isArray(page.tags)) page.tags = [];
+    const clean = String(tag).trim().toLowerCase().replace(/^#+/, '');
+    if (!clean) return false;
+    const finalTag = '#' + clean;
+    if (!page.tags.includes(finalTag)) {
+      page.tags.push(finalTag);
+      page.updatedAt = Date.now();
+      this.notify();
+      return true;
+    }
+    return false;
+  }
+
+  removeTagFromPage(pageId, tag) {
+    const page = this.data.pages[pageId];
+    if (!page || !Array.isArray(page.tags)) return false;
+    const clean = String(tag).trim().toLowerCase();
+    const idx = page.tags.findIndex(t => String(t).toLowerCase() === clean);
+    if (idx !== -1) {
+      page.tags.splice(idx, 1);
+      page.updatedAt = Date.now();
+      this.notify();
+      return true;
+    }
+    return false;
+  }
+
+  // Evernote Feature 2: Note Reminders with Deadlines & Alarms
+  setReminder(pageId, reminderDate) {
+    const page = this.data.pages[pageId];
+    if (!page) return false;
+    page.reminderDate = reminderDate ? new Date(reminderDate).toISOString() : null;
+    page.reminderDone = false;
+    page.updatedAt = Date.now();
+    this.notify();
+    return true;
+  }
+
+  toggleReminderDone(pageId) {
+    const page = this.data.pages[pageId];
+    if (!page || !page.reminderDate) return null;
+    page.reminderDone = !page.reminderDone;
+    page.updatedAt = Date.now();
+    this.notify();
+    return page.reminderDone;
+  }
+
+  getReminders() {
+    const now = Date.now();
+    const active = Object.values(this.data.pages).filter(p => !p.inTrash && p.reminderDate);
+    const overdue = [];
+    const upcoming = [];
+    const completed = [];
+
+    for (const p of active) {
+      if (p.reminderDone) {
+        completed.push(p);
+      } else if (new Date(p.reminderDate).getTime() < now) {
+        overdue.push(p);
+      } else {
+        upcoming.push(p);
+      }
+    }
+    return { overdue, upcoming, completed };
+  }
+
+  // Evernote Feature 3: Quick Scratchpad Dashboard Widget
+  getScratchpad() {
+    return this.data.scratchpad || '';
+  }
+
+  setScratchpad(text) {
+    this.data.scratchpad = String(text !== undefined && text !== null ? text : '');
+    this.notify();
+    return this.data.scratchpad;
+  }
+
+  convertScratchpadToNote(spaceId = 'space-personal') {
+    const content = (this.data.scratchpad || '').trim();
+    if (!content) return null;
+    const lines = content.split('\n').filter(Boolean);
+    const title = lines[0] ? lines[0].slice(0, 50) : 'Scratchpad Note';
+    const page = this.createPage({
+      spaceId,
+      title,
+      icon: '📝',
+      tags: ['#scratchpad', '#quick-capture']
+    });
+    this.setBlocks(page.id, [
+      { id: 'sb-1', type: 'heading', level: 1, text: title },
+      ...lines.slice(1).map((l, i) => ({ id: `sb-${i + 2}`, type: 'paragraph', text: l }))
+    ]);
+    this.data.scratchpad = '';
+    this.notify();
+    return page;
+  }
+
   // Pre-configured default workspace demonstrating 100% of AppFlowy features
   getDefaultData() {
     return {
+      scratchpad: 'Evernote Scratchpad: Jot down quick thoughts, phone numbers, or fleeting ideas here! Click "Convert to Note" to turn this into a permanent note.',
       workspace: {
         id: 'ws-default',
         name: 'My Workspace',
@@ -767,6 +903,9 @@ class AppFlowyStore {
           isFavorite: true,
           isLocked: false,
           inTrash: false,
+          tags: ['#welcome', '#guide'],
+          reminderDate: null,
+          reminderDone: false,
           createdAt: 1729700000000,
           updatedAt: 1729700000000,
           blocks: [

@@ -394,11 +394,198 @@ function csvToDatabase(csvText, title = 'Imported Database') {
   };
 }
 
+/**
+ * EVERNOTE INTEROPERABILITY: Export pages to standard Evernote .enex XML
+ */
+function pagesToENEX(pages = []) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const formatEvernoteDate = (timestamp) => {
+    const d = new Date(timestamp || Date.now());
+    return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+  };
+
+  const escapeXml = (unsafe) => {
+    return String(unsafe || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  };
+
+  const nowStr = formatEvernoteDate(Date.now());
+  const xmlLines = [];
+  xmlLines.push('<?xml version="1.0" encoding="UTF-8"?>');
+  xmlLines.push('<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export4.dtd">');
+  xmlLines.push(`<en-export export-date="${nowStr}" application="AppFlowy Lean" version="1.0">`);
+
+  for (const page of pages) {
+    if (!page) continue;
+    xmlLines.push('  <note>');
+    xmlLines.push(`    <title>${escapeXml(page.title || 'Untitled')}</title>`);
+    
+    // ENML content inside CDATA
+    const bodyLines = [];
+    if (page.blocks && page.blocks.length > 0) {
+      for (const b of page.blocks) {
+        const text = escapeXml(b.text || b.content || '');
+        if (b.type === 'heading') {
+          const h = Math.min(b.level || 1, 3);
+          bodyLines.push(`<h${h}>${text}</h${h}>`);
+        } else if (b.type === 'todo') {
+          const check = b.checked ? '☑' : '☐';
+          bodyLines.push(`<div>${check} ${text}</div>`);
+        } else if (b.type === 'bullet') {
+          bodyLines.push(`<li>${text}</li>`);
+        } else if (b.type === 'callout') {
+          bodyLines.push(`<blockquote><b>${escapeXml(b.icon || '💡')}</b> ${text}</blockquote>`);
+        } else {
+          bodyLines.push(`<div>${text}</div>`);
+        }
+      }
+    } else {
+      bodyLines.push(`<div>${escapeXml(page.title || '')}</div>`);
+    }
+
+    const enml = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note>${bodyLines.join('')}</en-note>`;
+    xmlLines.push(`    <content><![CDATA[${enml}]]></content>`);
+
+    xmlLines.push(`    <created>${formatEvernoteDate(page.createdAt)}</created>`);
+    xmlLines.push(`    <updated>${formatEvernoteDate(page.updatedAt)}</updated>`);
+
+    if (Array.isArray(page.tags)) {
+      for (const t of page.tags) {
+        const cleanTag = String(t).replace(/^#+/, '').trim();
+        if (cleanTag) xmlLines.push(`    <tag>${escapeXml(cleanTag)}</tag>`);
+      }
+    }
+
+    if (page.reminderDate || page.sourceUrl) {
+      xmlLines.push('    <note-attributes>');
+      if (page.reminderDate) {
+        xmlLines.push(`      <reminder-order>${formatEvernoteDate(page.reminderDate)}</reminder-order>`);
+        if (page.reminderDone) xmlLines.push(`      <reminder-done-time>${nowStr}</reminder-done-time>`);
+      }
+      if (page.sourceUrl) {
+        xmlLines.push(`      <source-url>${escapeXml(page.sourceUrl)}</source-url>`);
+      }
+      xmlLines.push('    </note-attributes>');
+    }
+
+    xmlLines.push('  </note>');
+  }
+
+  xmlLines.push('</en-export>');
+  return xmlLines.join('\n');
+}
+
+/**
+ * EVERNOTE INTEROPERABILITY: Import standard Evernote .enex XML into native pages
+ */
+function enexToPages(xmlString, spaceId = 'space-personal') {
+  if (!xmlString || typeof xmlString !== 'string') return [];
+  const notes = [];
+  const noteRegex = /<note>([\s\S]*?)<\/note>/gi;
+  let match;
+
+  while ((match = noteRegex.exec(xmlString)) !== null) {
+    const noteXml = match[1];
+
+    // Extract title
+    const titleMatch = /<title>([\s\S]*?)<\/title>/i.exec(noteXml);
+    const title = titleMatch ? titleMatch[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim() : 'Imported Note';
+
+    // Extract tags
+    const tags = [];
+    const tagRegex = /<tag>([\s\S]*?)<\/tag>/gi;
+    let tMatch;
+    while ((tMatch = tagRegex.exec(noteXml)) !== null) {
+      const rawTag = tMatch[1].trim();
+      if (rawTag) tags.push(rawTag.startsWith('#') ? rawTag.toLowerCase() : '#' + rawTag.toLowerCase());
+    }
+
+    // Extract content
+    let contentHtml = '';
+    const cdataMatch = /<!\[CDATA\[([\s\S]*?)\]\]>/i.exec(noteXml);
+    if (cdataMatch) {
+      contentHtml = cdataMatch[1];
+    } else {
+      const contentMatch = /<content>([\s\S]*?)<\/content>/i.exec(noteXml);
+      if (contentMatch) contentHtml = contentMatch[1];
+    }
+
+    // Convert HTML to simple blocks
+    const blocks = [];
+    blocks.push({
+      id: 'b-' + Math.random().toString(36).slice(2, 8),
+      type: 'heading',
+      level: 1,
+      text: title
+    });
+
+    // Strip ENML wrapper
+    const stripped = contentHtml
+      .replace(/<\?xml[\s\S]*?\?>/gi, '')
+      .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
+      .replace(/<en-note[^>]*>/gi, '')
+      .replace(/<\/en-note>/gi, '');
+
+    // Extract lines from <div>, <p>, <li>, <hX>
+    const lineRegex = /<(?:div|p|li|h[1-6]|blockquote)[^>]*>([\s\S]*?)<\/(?:div|p|li|h[1-6]|blockquote)>/gi;
+    let lMatch;
+    let extractedCount = 0;
+
+    while ((lMatch = lineRegex.exec(stripped)) !== null) {
+      const rawText = lMatch[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim();
+      if (rawText) {
+        blocks.push({
+          id: 'b-' + Math.random().toString(36).slice(2, 8),
+          type: 'paragraph',
+          text: rawText
+        });
+        extractedCount++;
+      }
+    }
+
+    if (extractedCount === 0) {
+      const fallbackText = stripped.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (fallbackText) {
+        blocks.push({
+          id: 'b-' + Math.random().toString(36).slice(2, 8),
+          type: 'paragraph',
+          text: fallbackText
+        });
+      }
+    }
+
+    notes.push({
+      spaceId,
+      title,
+      icon: '🐘',
+      tags,
+      blocks
+    });
+  }
+
+  return notes;
+}
+
+if (typeof window !== 'undefined') {
+  window.pageToMarkdown = pageToMarkdown;
+  window.markdownToBlocks = markdownToBlocks;
+  window.databaseToCSV = databaseToCSV;
+  window.csvToDatabase = csvToDatabase;
+  window.pagesToENEX = pagesToENEX;
+  window.enexToPages = enexToPages;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     pageToMarkdown,
     markdownToBlocks,
     databaseToCSV,
-    csvToDatabase
+    csvToDatabase,
+    pagesToENEX,
+    enexToPages
   };
 }

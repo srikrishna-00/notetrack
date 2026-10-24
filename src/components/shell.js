@@ -94,15 +94,19 @@ class AppShell {
     wsHeader.querySelector('.ws-settings-btn').onclick = () => this.onOpenSettings();
     sidebar.appendChild(wsHeader);
 
-    // Quick Actions: Search (Cmd+K) & Ask AI
+    // Quick Actions: Search (Cmd+K), AI, Scratchpad & Reminders
     const quickBar = document.createElement('div');
     quickBar.className = 'sidebar-quick-bar';
     quickBar.innerHTML = `
       <button class="quick-btn" id="sb-search-btn">🔍 Search <kbd>⌘K</kbd></button>
-      <button class="quick-btn" id="sb-ai-btn">✨ AppFlowy AI</button>
+      <button class="quick-btn" id="sb-ai-btn">✨ AI</button>
+      <button class="quick-btn" id="sb-scratch-btn" title="Quick Scratchpad (Cmd+Shift+N)">📝 Note</button>
+      <button class="quick-btn" id="sb-remind-btn" title="Note Reminders (Cmd+Shift+R)">⏰ Due</button>
     `;
     quickBar.querySelector('#sb-search-btn').onclick = () => this.onOpenPalette();
     quickBar.querySelector('#sb-ai-btn').onclick = () => this.onOpenAI();
+    quickBar.querySelector('#sb-scratch-btn').onclick = () => this.showScratchpadModal();
+    quickBar.querySelector('#sb-remind-btn').onclick = () => this.showRemindersModal();
     sidebar.appendChild(quickBar);
 
     // Spaces Switcher Tabs (Personal / Work / Private)
@@ -162,7 +166,26 @@ class AppShell {
     pagesSection.appendChild(treeContainer);
     sidebar.appendChild(pagesSection);
 
-    // Bottom Tools: Trash, Templates & Add Page
+    // Evernote Feature: Global Tags Section in Sidebar
+    const allTags = this.store.getAllTags ? this.store.getAllTags() : [];
+    if (allTags.length > 0) {
+      const tagsSection = document.createElement('div');
+      tagsSection.className = 'sidebar-section sidebar-tags-section';
+      tagsSection.innerHTML = '<div class="sidebar-section-title"><span>🏷️ Tags</span></div>';
+      const tagsList = document.createElement('div');
+      tagsList.className = 'sidebar-tree';
+      allTags.forEach(({ tag, count }) => {
+        const tagItem = document.createElement('div');
+        tagItem.className = 'tree-item tag-item';
+        tagItem.innerHTML = `<span class="tag-hash">#</span><span class="item-title">${tag.replace(/^#/, '')}</span><span class="tag-badge">${count}</span>`;
+        tagItem.onclick = () => this.showTagFilterModal(tag);
+        tagsList.appendChild(tagItem);
+      });
+      tagsSection.appendChild(tagsList);
+      sidebar.appendChild(tagsSection);
+    }
+
+    // Bottom Tools: Trash, Clipper, Templates & Add Page
     const bottomTools = document.createElement('div');
     bottomTools.className = 'sidebar-bottom-tools';
     bottomTools.innerHTML = `
@@ -170,11 +193,13 @@ class AppShell {
         <span>🗑️ Trash</span>
         ${trash.length > 0 ? `<span class="trash-badge">${trash.length}</span>` : ''}
       </button>
+      <button class="sb-tool-btn" id="sb-clip-btn" title="Evernote Web Clipper (Cmd+Shift+C)">📎 Clip</button>
       <button class="sb-tool-btn" id="sb-templates-btn">📋 Templates</button>
       <button class="sb-tool-btn" id="sb-new-doc-btn">+ New</button>
     `;
 
     bottomTools.querySelector('#sb-trash-btn').onclick = () => this.showTrashModal();
+    bottomTools.querySelector('#sb-clip-btn').onclick = () => this.showWebClipperModal();
     bottomTools.querySelector('#sb-templates-btn').onclick = () => this.showTemplatesModal();
     bottomTools.querySelector('#sb-new-doc-btn').onclick = () => {
       const p = this.store.createPage({ spaceId: this.activeSpaceId, title: 'Untitled' });
@@ -419,6 +444,51 @@ class AppShell {
     metaRow.appendChild(actionGroup);
 
     headerWrap.appendChild(metaRow);
+
+    // Evernote Feature: Tag Chips & Reminder Status Bar
+    const tagsRow = document.createElement('div');
+    tagsRow.className = 'page-tags-bar';
+    const currentTags = Array.isArray(page.tags) ? page.tags : [];
+    
+    tagsRow.innerHTML = `
+      <div class="page-tags-list">
+        ${currentTags.map(t => `<span class="page-tag-chip" data-tag="${t}">${t} <span class="tag-del-btn" title="Remove tag">✕</span></span>`).join('')}
+        <button class="add-tag-chip-btn">+ Tag</button>
+      </div>
+      ${page.reminderDate ? `
+        <div class="page-reminder-pill ${page.reminderDone ? 'is-done' : ''}" title="Click to view reminders">
+          ⏰ ${new Date(page.reminderDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} ${page.reminderDone ? '(Done)' : ''}
+        </div>
+      ` : ''}
+    `;
+
+    tagsRow.querySelectorAll('.page-tag-chip').forEach(chip => {
+      const delBtn = chip.querySelector('.tag-del-btn');
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.store.removeTagFromPage(page.id, chip.dataset.tag);
+        this.updateHeader();
+        this.updateSidebar();
+      };
+      chip.onclick = () => this.showTagFilterModal(chip.dataset.tag);
+    });
+
+    const addTagBtn = tagsRow.querySelector('.add-tag-chip-btn');
+    addTagBtn.onclick = () => {
+      const newTag = prompt('Enter new tag (e.g. #work, #urgent):');
+      if (newTag) {
+        this.store.addTagToPage(page.id, newTag);
+        this.updateHeader();
+        this.updateSidebar();
+      }
+    };
+
+    const reminderPill = tagsRow.querySelector('.page-reminder-pill');
+    if (reminderPill) {
+      reminderPill.onclick = () => this.showRemindersModal();
+    }
+
+    headerWrap.appendChild(tagsRow);
 
     // Notion Feature: Incoming Backlinks Section
     const backlinks = this.store.getBacklinks ? this.store.getBacklinks(page.id) : [];
@@ -673,6 +743,12 @@ class AppShell {
         <div>Characters: <strong>${chars}</strong></div>
         <div>Read time: <strong>~${readTimeMin} min</strong></div>
       </div>
+      <div class="notion-menu-divider"></div>
+      <div class="notion-menu-section evernote-menu-actions">
+        <button class="menu-action-item" id="btn-menu-reminder">⏰ Set Note Reminder</button>
+        <button class="menu-action-item" id="btn-menu-info">ℹ️ Note Info & Details</button>
+        <button class="menu-action-item" id="btn-menu-enex">🐘 Export to Evernote (.enex)</button>
+      </div>
     `;
 
     popup.querySelectorAll('.btn-font-switch').forEach(btn => {
@@ -697,6 +773,21 @@ class AppShell {
       this.store.updatePage(page.id, { isLocked: ev.target.checked });
       this.onPageSelect(page.id);
       popup.remove();
+    };
+
+    popup.querySelector('#btn-menu-reminder').onclick = () => {
+      popup.remove();
+      this.showSetReminderModal(page);
+    };
+
+    popup.querySelector('#btn-menu-info').onclick = () => {
+      popup.remove();
+      this.showNoteInfoModal(page);
+    };
+
+    popup.querySelector('#btn-menu-enex').onclick = () => {
+      popup.remove();
+      this.exportPageToENEX(page);
     };
 
     document.body.appendChild(popup);
@@ -790,6 +881,21 @@ class AppShell {
         const note = this.store.createFromTemplate('daily-journal', this.activeSpaceId);
         this.onPageSelect(note.id);
       }
+      // Evernote Quick Scratchpad: Cmd+Shift+N
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        this.showScratchpadModal();
+      }
+      // Evernote Web Clipper: Cmd+Shift+C
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        this.showWebClipperModal();
+      }
+      // Evernote Reminders: Cmd+Shift+R
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        this.showRemindersModal();
+      }
     });
   }
 
@@ -835,6 +941,379 @@ class AppShell {
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       };
     });
+  }
+
+  // =========================================================================
+  // EVERNOTE FEATURE MODALS & TOOLS
+  // =========================================================================
+
+  // Evernote Feature: Export Page as .enex XML
+  exportPageToENEX(page) {
+    const exporter = (typeof window !== 'undefined' && window.pagesToENEX) || null;
+    if (!exporter) {
+      alert('ENEX exporter is initializing...');
+      return;
+    }
+    const xml = exporter([page]);
+    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(page.title || 'Note').replace(/[/\\?%*:|"<>]/g, '_')}.enex`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 100);
+  }
+
+  // Evernote Feature: Quick Scratchpad Modal
+  showScratchpadModal() {
+    const existing = document.getElementById('af-scratchpad-modal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    backdrop.id = 'af-scratchpad-modal';
+
+    const box = document.createElement('div');
+    box.className = 'af-scratchpad-box';
+
+    box.innerHTML = `
+      <div class="scratchpad-head">
+        <h2>📝 Quick Scratchpad</h2>
+        <button class="modal-close-btn">✕</button>
+      </div>
+      <p class="scratchpad-desc">Capture quick thoughts, links, and snippets. Auto-saves continuously.</p>
+      <textarea class="scratchpad-textarea" placeholder="Start typing thoughts here...">${this.store.getScratchpad()}</textarea>
+      <div class="scratchpad-actions">
+        <span class="scratchpad-saved-hint">✓ Auto-saved locally</span>
+        <button class="btn-convert-note">Convert to Note →</button>
+      </div>
+    `;
+
+    const textarea = box.querySelector('.scratchpad-textarea');
+    textarea.oninput = () => {
+      this.store.setScratchpad(textarea.value);
+    };
+
+    box.querySelector('.btn-convert-note').onclick = () => {
+      const newPage = this.store.convertScratchpadToNote(this.activeSpaceId);
+      if (newPage) {
+        backdrop.remove();
+        this.onPageSelect(newPage.id);
+      } else {
+        alert('Type something in the scratchpad first!');
+      }
+    };
+
+    box.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+    setTimeout(() => textarea.focus(), 50);
+  }
+
+  // Evernote Feature: Reminders Manager Modal
+  showRemindersModal() {
+    const existing = document.getElementById('af-reminders-modal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    backdrop.id = 'af-reminders-modal';
+
+    const box = document.createElement('div');
+    box.className = 'af-reminders-box';
+
+    const { overdue, upcoming, completed } = this.store.getReminders();
+
+    const renderList = (items, label, badgeClass) => {
+      if (items.length === 0) return '';
+      return `
+        <div class="reminders-group">
+          <div class="reminders-group-title ${badgeClass}">${label} (${items.length})</div>
+          <div class="reminders-items-list">
+            ${items.map(p => `
+              <div class="reminder-item-row" data-id="${p.id}">
+                <input type="checkbox" class="chk-reminder-done" data-id="${p.id}" ${p.reminderDone ? 'checked' : ''} />
+                <span class="reminder-note-icon">${p.icon || '📄'}</span>
+                <span class="reminder-note-title">${p.title}</span>
+                <span class="reminder-due-date">${new Date(p.reminderDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    };
+
+    box.innerHTML = `
+      <div class="reminders-head">
+        <h2>⏰ Note Reminders & Deadlines</h2>
+        <button class="modal-close-btn">✕</button>
+      </div>
+      <div class="reminders-body">
+        ${overdue.length === 0 && upcoming.length === 0 && completed.length === 0 ? '<div class="empty-state">No active reminders. Open any note and select ⋯ → "Set Note Reminder".</div>' : ''}
+        ${renderList(overdue, '⚠️ Overdue', 'badge-overdue')}
+        ${renderList(upcoming, '📅 Upcoming', 'badge-upcoming')}
+        ${renderList(completed, '✓ Completed', 'badge-completed')}
+      </div>
+    `;
+
+    box.querySelectorAll('.chk-reminder-done').forEach(chk => {
+      chk.onclick = (e) => {
+        e.stopPropagation();
+        this.store.toggleReminderDone(chk.dataset.id);
+        backdrop.remove();
+        this.showRemindersModal();
+        this.updateHeader();
+      };
+    });
+
+    box.querySelectorAll('.reminder-item-row').forEach(row => {
+      row.onclick = () => {
+        backdrop.remove();
+        this.onPageSelect(row.dataset.id);
+      };
+    });
+
+    box.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+  }
+
+  // Evernote Feature: Set Reminder for current note
+  showSetReminderModal(page) {
+    const existing = document.getElementById('af-set-reminder-modal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    backdrop.id = 'af-set-reminder-modal';
+
+    const box = document.createElement('div');
+    box.className = 'af-dialog-box';
+
+    const currentIso = page.reminderDate ? new Date(page.reminderDate).toISOString().slice(0, 16) : '';
+
+    box.innerHTML = `
+      <div class="dialog-head">
+        <h3>⏰ Set Reminder for "${page.title}"</h3>
+        <button class="modal-close-btn">✕</button>
+      </div>
+      <div class="dialog-body">
+        <label class="dialog-label">Select Date & Time:</label>
+        <input type="datetime-local" class="dialog-input" id="reminder-datetime" value="${currentIso}" />
+        <div class="dialog-actions">
+          ${page.reminderDate ? '<button class="btn-danger" id="btn-clear-reminder">Clear Reminder</button>' : ''}
+          <button class="btn-primary" id="btn-save-reminder">Save Reminder</button>
+        </div>
+      </div>
+    `;
+
+    box.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+    box.querySelector('#btn-save-reminder').onclick = () => {
+      const dt = box.querySelector('#reminder-datetime').value;
+      if (dt) {
+        this.store.setReminder(page.id, dt);
+      }
+      backdrop.remove();
+      this.updateHeader();
+    };
+
+    const clearBtn = box.querySelector('#btn-clear-reminder');
+    if (clearBtn) {
+      clearBtn.onclick = () => {
+        this.store.setReminder(page.id, null);
+        backdrop.remove();
+        this.updateHeader();
+      };
+    }
+
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+  }
+
+  // Evernote Feature: Web Clipper / Quick Capture Dialog
+  showWebClipperModal() {
+    const existing = document.getElementById('af-clipper-modal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    backdrop.id = 'af-clipper-modal';
+
+    const box = document.createElement('div');
+    box.className = 'af-clipper-box';
+
+    box.innerHTML = `
+      <div class="clipper-head">
+        <h2>📎 Evernote Web Clipper</h2>
+        <button class="modal-close-btn">✕</button>
+      </div>
+      <p class="clipper-desc">Clip articles, snippets, or bookmarks directly into your workspace.</p>
+      <div class="clipper-form">
+        <label class="clipper-label">Page or Article Title:</label>
+        <input type="text" class="clipper-input" id="clip-title" placeholder="e.g. Clean Architecture in 2026" />
+
+        <label class="clipper-label">Source URL:</label>
+        <input type="url" class="clipper-input" id="clip-url" placeholder="https://example.com/article" />
+
+        <label class="clipper-label">Clipped Excerpt / Highlight:</label>
+        <textarea class="clipper-textarea" id="clip-text" placeholder="Paste article snippet or notes here..."></textarea>
+
+        <label class="clipper-label">Tags (comma-separated):</label>
+        <input type="text" class="clipper-input" id="clip-tags" value="#webclip, #readlater" />
+
+        <div class="clipper-actions">
+          <button class="modal-cancel-btn">Cancel</button>
+          <button class="btn-primary" id="btn-save-clip">Save Clipped Note</button>
+        </div>
+      </div>
+    `;
+
+    box.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+    box.querySelector('.modal-cancel-btn').onclick = () => backdrop.remove();
+
+    box.querySelector('#btn-save-clip').onclick = () => {
+      const title = box.querySelector('#clip-title').value.trim() || 'Clipped Web Article';
+      const url = box.querySelector('#clip-url').value.trim() || 'https://example.com';
+      const text = box.querySelector('#clip-text').value.trim() || 'No excerpt provided.';
+      const rawTags = box.querySelector('#clip-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+
+      const page = this.store.createPage({
+        spaceId: this.activeSpaceId,
+        title,
+        icon: '📎',
+        tags: rawTags,
+        sourceUrl: url
+      });
+
+      this.store.setBlocks(page.id, [
+        { id: 'b1', type: 'heading', level: 1, text: title },
+        { id: 'b2', type: 'clip', url, title, text, date: new Date().toLocaleDateString() },
+        { id: 'b3', type: 'heading', level: 2, text: 'Notes & Takeaways' },
+        { id: 'b4', type: 'paragraph', text: 'Write your thoughts on this clip here...' }
+      ]);
+
+      backdrop.remove();
+      this.onPageSelect(page.id);
+    };
+
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+    setTimeout(() => box.querySelector('#clip-title').focus(), 50);
+  }
+
+  // Evernote Feature: Tag Filter Modal (Browse notes by tag)
+  showTagFilterModal(tag) {
+    const existing = document.getElementById('af-tag-filter-modal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    backdrop.id = 'af-tag-filter-modal';
+
+    const box = document.createElement('div');
+    box.className = 'af-dialog-box';
+
+    const matching = this.store.getPagesByTag(tag);
+
+    box.innerHTML = `
+      <div class="dialog-head">
+        <h2>🏷️ Notes Tagged "${tag}" (${matching.length})</h2>
+        <button class="modal-close-btn">✕</button>
+      </div>
+      <div class="dialog-body">
+        ${matching.length === 0 ? '<div class="empty-state">No active notes with this tag.</div>' : ''}
+        <div class="tag-notes-list">
+          ${matching.map(p => `
+            <div class="tag-note-item" data-id="${p.id}">
+              <span class="note-icon">${p.icon || '📄'}</span>
+              <span class="note-title">${p.title}</span>
+              <span class="note-date">${new Date(p.updatedAt).toLocaleDateString()}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    box.querySelectorAll('.tag-note-item').forEach(item => {
+      item.onclick = () => {
+        backdrop.remove();
+        this.onPageSelect(item.dataset.id);
+      };
+    });
+
+    box.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+  }
+
+  // Evernote Feature: Note Info & Metadata Inspector
+  showNoteInfoModal(page) {
+    const existing = document.getElementById('af-note-info-modal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    backdrop.id = 'af-note-info-modal';
+
+    const box = document.createElement('div');
+    box.className = 'af-dialog-box';
+
+    let words = 0;
+    let chars = 0;
+    if (page.blocks) {
+      page.blocks.forEach(b => {
+        const txt = b.text || b.content || '';
+        chars += txt.length;
+        words += txt.trim().split(/\s+/).filter(Boolean).length;
+      });
+    }
+    const approxSizeKb = ((JSON.stringify(page).length) / 1024).toFixed(1);
+
+    box.innerHTML = `
+      <div class="dialog-head">
+        <h2>ℹ️ Note Details: "${page.title}"</h2>
+        <button class="modal-close-btn">✕</button>
+      </div>
+      <div class="dialog-body">
+        <table class="info-table">
+          <tr><th>Notebook / Space:</th><td>${page.spaceId.replace('space-', '').toUpperCase()}</td></tr>
+          <tr><th>Created:</th><td>${new Date(page.createdAt).toLocaleString()}</td></tr>
+          <tr><th>Last Modified:</th><td>${new Date(page.updatedAt).toLocaleString()}</td></tr>
+          <tr><th>Word Count:</th><td>${words} words</td></tr>
+          <tr><th>Character Count:</th><td>${chars} characters</td></tr>
+          <tr><th>Note Size:</th><td>~${approxSizeKb} KB</td></tr>
+          <tr><th>Tags:</th><td>${Array.isArray(page.tags) && page.tags.length > 0 ? page.tags.join(', ') : 'None'}</td></tr>
+          <tr><th>Reminder:</th><td>${page.reminderDate ? `${new Date(page.reminderDate).toLocaleString()} ${page.reminderDone ? '(Done)' : ''}` : 'None'}</td></tr>
+          ${page.sourceUrl ? `<tr><th>Source URL:</th><td><a href="${page.sourceUrl}" target="_blank">${page.sourceUrl}</a></td></tr>` : ''}
+        </table>
+      </div>
+    `;
+
+    box.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
   }
 }
 

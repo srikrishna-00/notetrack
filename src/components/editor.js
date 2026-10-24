@@ -29,7 +29,9 @@ class BlockEditor {
       { type: 'toc', label: 'Table of Contents', desc: 'Auto-generated outline of page headings.', icon: '📑' },
       { type: 'table', label: 'Simple Table', desc: '2D grid table with custom rows and columns.', icon: '⊞' },
       { type: 'bookmark', label: 'Web Bookmark', desc: 'Visual link preview card.', icon: '🔗' },
-      { type: 'synced', label: 'Synced Block', desc: 'Sync content across multiple pages.', icon: '🔄' }
+      { type: 'synced', label: 'Synced Block', desc: 'Sync content across multiple pages.', icon: '🔄' },
+      { type: 'audio', label: 'Voice Memo / Audio', desc: 'Evernote audio voice recorder and player.', icon: '🎙️' },
+      { type: 'clip', label: 'Web Clip', desc: 'Evernote clipped web article snippet.', icon: '📎' }
     ];
 
     this.render();
@@ -486,6 +488,130 @@ class BlockEditor {
         break;
       }
 
+      case 'audio': {
+        const audioWrap = document.createElement('div');
+        audioWrap.className = 'af-audio-block';
+
+        const header = document.createElement('div');
+        header.className = 'audio-header';
+        header.innerHTML = `<span>🎙️ <strong>${block.title || 'Voice Memo'}</strong></span>`;
+
+        const playerArea = document.createElement('div');
+        playerArea.className = 'audio-player-area';
+
+        if (block.src) {
+          const audioEl = document.createElement('audio');
+          audioEl.controls = true;
+          audioEl.src = block.src;
+          playerArea.appendChild(audioEl);
+        } else {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'audio-placeholder';
+          placeholder.textContent = 'No voice memo recorded yet.';
+          playerArea.appendChild(placeholder);
+        }
+
+        audioWrap.appendChild(header);
+        audioWrap.appendChild(playerArea);
+
+        if (!this.isReadOnly) {
+          const btnGroup = document.createElement('div');
+          btnGroup.className = 'audio-btn-group';
+
+          const recordBtn = document.createElement('button');
+          recordBtn.className = 'btn-record-audio';
+          recordBtn.textContent = '● Record Voice Memo';
+          let mediaRecorder = null;
+          let audioChunks = [];
+
+          recordBtn.onclick = async () => {
+            if (recordBtn.dataset.recording === 'true') {
+              if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+              }
+              recordBtn.dataset.recording = 'false';
+              recordBtn.textContent = '● Record Voice Memo';
+              recordBtn.classList.remove('is-recording');
+            } else {
+              try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                  alert('Audio recording not supported in this environment');
+                  return;
+                }
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    this.store.updateBlock(this.pageId, block.id, {
+                      src: reader.result,
+                      title: `Voice Memo (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`
+                    });
+                    this.render();
+                  };
+                  reader.readAsDataURL(blob);
+                };
+                mediaRecorder.start();
+                recordBtn.dataset.recording = 'true';
+                recordBtn.textContent = '■ Stop Recording';
+                recordBtn.classList.add('is-recording');
+              } catch (err) {
+                alert('Microphone access unavailable: ' + err.message);
+              }
+            }
+          };
+
+          const urlInput = document.createElement('input');
+          urlInput.className = 'audio-url-input';
+          urlInput.placeholder = 'Or paste audio URL (.mp3, .wav)...';
+          urlInput.value = block.src && !block.src.startsWith('data:') ? block.src : '';
+          urlInput.onchange = () => {
+            const val = urlInput.value.trim();
+            if (val) {
+              this.store.updateBlock(this.pageId, block.id, { src: val, title: 'Audio Track' });
+              this.render();
+            }
+          };
+
+          btnGroup.appendChild(recordBtn);
+          btnGroup.appendChild(urlInput);
+          audioWrap.appendChild(btnGroup);
+        }
+
+        content.appendChild(audioWrap);
+        break;
+      }
+
+      case 'clip': {
+        const clipWrap = document.createElement('div');
+        clipWrap.className = 'af-clip-block';
+
+        const topBar = document.createElement('div');
+        topBar.className = 'clip-top-bar';
+        topBar.innerHTML = `
+          <span class="clip-badge">📎 WEB CLIP</span>
+          <a class="clip-link" href="${block.url || '#'}" target="_blank" rel="noopener">${block.url || 'Source Link'}</a>
+          <span class="clip-date">${block.date || new Date().toLocaleDateString()}</span>
+        `;
+
+        const titleEl = document.createElement('h4');
+        titleEl.className = 'clip-title';
+        this.makeEditable(titleEl, block, 'title');
+
+        const quoteEl = document.createElement('blockquote');
+        quoteEl.className = 'clip-quote';
+        this.makeEditable(quoteEl, block, 'text');
+
+        clipWrap.appendChild(topBar);
+        clipWrap.appendChild(titleEl);
+        clipWrap.appendChild(quoteEl);
+        content.appendChild(clipWrap);
+        break;
+      }
+
       default: {
         const defP = document.createElement('p');
         this.makeEditable(defP, block, 'text');
@@ -756,6 +882,18 @@ class BlockEditor {
         ['Data 1', 'Data 2', 'Data 3'],
         ['Data 4', 'Data 5', 'Data 6']
       ];
+    }
+    if (opt.type === 'audio') {
+      update.type = 'audio';
+      update.title = 'Voice Memo';
+      update.src = '';
+    }
+    if (opt.type === 'clip') {
+      update.type = 'clip';
+      update.url = 'https://news.ycombinator.com';
+      update.title = 'Clipped Article';
+      update.text = 'Key excerpt or quote from the clipped webpage.';
+      update.date = new Date().toLocaleDateString();
     }
 
     this.store.updateBlock(this.pageId, block.id, update);
