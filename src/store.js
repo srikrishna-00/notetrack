@@ -1,6 +1,16 @@
 // src/store.js - Unified Reactive Data Store for AppFlowy Lean
 'use strict';
 
+function escapeHTML(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 class AppFlowyStore {
   constructor(initialData = null) {
     this.subscribers = new Set();
@@ -1264,8 +1274,10 @@ const NoteTrackStore = AppFlowyStore;
 if (typeof window !== 'undefined') {
   window.NoteTrackStore = NoteTrackStore;
   window.AppFlowyStore = AppFlowyStore;
+  window.escapeHTML = escapeHTML;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { NoteTrackStore, AppFlowyStore };
+  module.exports = { NoteTrackStore, AppFlowyStore, escapeHTML };
 }
+

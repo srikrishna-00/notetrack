@@ -21,6 +21,49 @@ class AppShell {
     this.store.subscribe(() => this.updateSidebar());
   }
 
+  escape(str) {
+    if (typeof window !== 'undefined' && window.escapeHTML) {
+      return window.escapeHTML(str);
+    }
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  createModal({ id, className = '', title = '', bodyHtml = '', onInit = null }) {
+    if (id) {
+      const existing = document.getElementById(id);
+      if (existing) existing.remove();
+    }
+    const backdrop = document.createElement('div');
+    backdrop.className = 'af-modal-backdrop';
+    if (id) backdrop.id = id;
+
+    const box = document.createElement('div');
+    box.className = className;
+    box.innerHTML = `
+      <div class="modal-head">
+        <h2>${this.escape(title)}</h2>
+        <button class="modal-close-btn">✕</button>
+      </div>
+      ${bodyHtml}
+    `;
+
+    box.querySelector('.modal-close-btn').onclick = () => backdrop.remove();
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    if (onInit) onInit(box, backdrop);
+    return { backdrop, box };
+  }
+
   setActivePage(pageId) {
     this.activePageId = pageId;
     if (!this.openTabs.includes(pageId)) {
@@ -171,7 +214,7 @@ class AppShell {
       pinned.forEach(p => {
         const item = document.createElement('div');
         item.className = 'tree-item' + (p.id === this.activePageId ? ' is-active' : '');
-        item.innerHTML = `<span class="item-icon">${p.icon || '📄'}</span> <span class="item-title">${p.title}</span>`;
+        item.innerHTML = `<span class="item-icon">${this.escape(p.icon || '📄')}</span> <span class="item-title">${this.escape(p.title)}</span>`;
         item.onclick = () => this.onPageSelect(p.id);
         pinList.appendChild(item);
       });
@@ -190,7 +233,7 @@ class AppShell {
       favorites.forEach(p => {
         const item = document.createElement('div');
         item.className = 'tree-item' + (p.id === this.activePageId ? ' is-active' : '');
-        item.innerHTML = `<span class="item-icon">${p.icon || '📄'}</span> <span class="item-title">${p.title}</span>`;
+        item.innerHTML = `<span class="item-icon">${this.escape(p.icon || '📄')}</span> <span class="item-title">${this.escape(p.title)}</span>`;
         item.onclick = () => this.onPageSelect(p.id);
         favList.appendChild(item);
       });
@@ -239,7 +282,7 @@ class AppShell {
       allTags.forEach(({ tag, count }) => {
         const tagItem = document.createElement('div');
         tagItem.className = 'tree-item tag-item';
-        tagItem.innerHTML = `<span class="tag-hash">#</span><span class="item-title">${tag.replace(/^#/, '')}</span><span class="tag-badge">${count}</span>`;
+        tagItem.innerHTML = `<span class="tag-hash">#</span><span class="item-title">${this.escape(tag.replace(/^#/, ''))}</span><span class="tag-badge">${count}</span>`;
         tagItem.onclick = () => this.showTagFilterModal(tag);
         tagsList.appendChild(tagItem);
       });
@@ -526,6 +569,19 @@ class AppShell {
     actionGroup.appendChild(moreBtn);
     actionGroup.appendChild(trashBtn);
 
+    if (page.type !== 'database' && page.type !== 'folder') {
+      const npBtn = document.createElement('button');
+      npBtn.className = 'page-act-icon-btn btn-header-notepad';
+      npBtn.innerHTML = '📝';
+      npBtn.title = 'Toggle Plain Text Notepad Mode';
+      npBtn.onclick = () => {
+        if (typeof window !== 'undefined' && window.toggleNotepadMode) {
+          window.toggleNotepadMode(page.id);
+        }
+      };
+      actionGroup.appendChild(npBtn);
+    }
+
     metaRow.appendChild(iconBtn);
     metaRow.appendChild(titleInput);
     metaRow.appendChild(actionGroup);
@@ -677,6 +733,15 @@ class AppShell {
         action: () => {
           this.store.toggleStar(node.id);
           this.updateSidebar();
+        }
+      },
+      {
+        label: 'Open in Notepad Mode (📝)',
+        icon: '📝',
+        action: () => {
+          if (typeof window !== 'undefined' && window.toggleNotepadMode) {
+            window.toggleNotepadMode(node.id);
+          }
         }
       },
       {
@@ -883,6 +948,7 @@ class AppShell {
         <button class="menu-action-item" id="btn-menu-star">${page.isStarred ? '⭐ Unstar Note' : '⭐ Star Note'}</button>
         <button class="menu-action-item" id="btn-menu-share-wa">💬 Share via WhatsApp</button>
         <button class="menu-action-item" id="btn-menu-share-tg">✈️ Share via Telegram</button>
+        <button class="menu-action-item" id="btn-menu-np-toggle">📝 Toggle Notepad Mode</button>
       </div>
       <div class="notion-menu-divider"></div>
       <div class="notion-menu-section evernote-menu-actions">
@@ -991,6 +1057,16 @@ class AppShell {
       window.open(`https://t.me/share/url?url=https://notetrack.app&text=${text}`, '_blank');
       popup.remove();
     };
+
+    const npToggleBtn = popup.querySelector('#btn-menu-np-toggle');
+    if (npToggleBtn) {
+      npToggleBtn.onclick = () => {
+        popup.remove();
+        if (typeof window !== 'undefined' && window.toggleNotepadMode) {
+          window.toggleNotepadMode(page.id);
+        }
+      };
+    }
 
     popup.querySelector('#btn-menu-del-voice').onclick = () => {
       popup.remove();

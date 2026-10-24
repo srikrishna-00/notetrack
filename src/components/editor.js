@@ -153,6 +153,19 @@ class BlockEditor {
     this.render();
   }
 
+  escape(str) {
+    if (typeof window !== 'undefined' && window.escapeHTML) {
+      return window.escapeHTML(str);
+    }
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   render() {
     this.container.innerHTML = '';
     const page = this.store.getPage(this.pageId);
@@ -567,7 +580,7 @@ class BlockEditor {
           cardLeft.innerHTML = `
             <div class="file-card-icon" style="background:${meta.color}18; color:${meta.color};">${meta.icon}</div>
             <div class="file-card-info">
-              <div class="file-card-title" title="${block.fileName || 'Attachment'}">${block.fileName || (block.type === 'pdf' ? 'PDF Document' : 'Document Attachment')}</div>
+              <div class="file-card-title" title="${this.escape(block.fileName || 'Attachment')}">${this.escape(block.fileName || (block.type === 'pdf' ? 'PDF Document' : 'Document Attachment'))}</div>
               <div class="file-card-sub">
                 <span class="file-badge-pill" style="background:${meta.color}20; color:${meta.color}; border:1px solid ${meta.color}40;">${meta.badge}</span>
                 <span class="file-size-tag">${formatFileSize(block.fileSize)}</span>
@@ -582,7 +595,7 @@ class BlockEditor {
           const downloadBtn = document.createElement('a');
           downloadBtn.className = 'btn-file-act btn-file-download';
           downloadBtn.href = block.url;
-          downloadBtn.download = block.fileName || (block.type === 'pdf' ? 'document.pdf' : 'attachment');
+          downloadBtn.download = (block.fileName || (block.type === 'pdf' ? 'document.pdf' : 'attachment')).replace(/[/\\?%*:|"<>]/g, '_');
           downloadBtn.innerHTML = '📥 Download';
           downloadBtn.title = 'Download file';
           cardActions.appendChild(downloadBtn);
@@ -1210,7 +1223,7 @@ class BlockEditor {
           }
 
           svgMarkup += `
-            <text x="${x + nodeWidth/2}" y="${y + nodeHeight/2 + 4}" fill="currentColor" font-size="12" font-weight="600" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">${st.label}</text>
+            <text x="${x + nodeWidth/2}" y="${y + nodeHeight/2 + 4}" fill="currentColor" font-size="12" font-weight="600" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">${this.escape(st.label)}</text>
           `;
 
           if (i < steps.length - 1) {
@@ -1276,7 +1289,7 @@ class BlockEditor {
               <button class="btn-del-sticky" title="Delete sticky note">✕</button>
             ` : ''}
           </div>
-          <div class="sticky-body" contenteditable="${!this.isReadOnly}" data-placeholder="Write a sticky note...">${block.text || ''}</div>
+          <div class="sticky-body" contenteditable="${!this.isReadOnly}" data-placeholder="Write a sticky note...">${this.escape(block.text || '')}</div>
         `;
 
         if (!this.isReadOnly) {
@@ -1317,10 +1330,10 @@ class BlockEditor {
         chatWrap.innerHTML = `
           <div class="chat-bubble ${sender}">
             <div class="chat-bubble-head">
-              <span class="chat-sender-tag">👤 ${sender === 'me' ? 'Saved Note' : sender}</span>
-              <span class="chat-time-tag">${time}</span>
+              <span class="chat-sender-tag">👤 ${this.escape(sender === 'me' ? 'Saved Note' : sender)}</span>
+              <span class="chat-time-tag">${this.escape(time)}</span>
             </div>
-            <div class="chat-text-body" contenteditable="${!this.isReadOnly}" data-placeholder="Type message note...">${block.text || ''}</div>
+            <div class="chat-text-body" contenteditable="${!this.isReadOnly}" data-placeholder="Type message note...">${this.escape(block.text || '')}</div>
             <div class="chat-footer">
               <span class="chat-receipt" title="Saved locally">✓✓</span>
               ${!this.isReadOnly ? `

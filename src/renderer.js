@@ -27,7 +27,17 @@
   // 2. State & Component Instances
   let currentEditor = null;
   let currentDbView = null;
+  let currentNotepadView = null;
+  const activeEditorModes = {}; // pageId -> 'rich' | 'notepad'
   const aiAssistant = new AIAssistant();
+
+  window.toggleNotepadMode = function(pageId) {
+    const targetId = pageId || (shell && shell.activePageId);
+    if (!targetId) return;
+    activeEditorModes[targetId] = activeEditorModes[targetId] === 'notepad' ? 'rich' : 'notepad';
+    renderPageView(targetId);
+    if (shell) shell.updateHeader();
+  };
 
   const appRoot = document.getElementById('app');
 
@@ -55,6 +65,12 @@
       switch (act) {
         case 'new-doc': {
           const p = store.createPage({ spaceId: shell.activeSpaceId, title: 'Untitled Document', type: 'document' });
+          shell.setActivePage(p.id);
+          renderPageView(p.id);
+          break;
+        }
+        case 'new-notepad': {
+          const p = store.createPage({ spaceId: shell.activeSpaceId, title: 'Untitled Note', type: 'notepad', icon: '📝' });
           shell.setActivePage(p.id);
           renderPageView(p.id);
           break;
@@ -93,7 +109,7 @@
     onAccentChange: (color) => applyAccent(color)
   });
 
-  // 6. View Switcher (Document vs Database)
+  // 6. View Switcher (Document vs Database vs Folder vs Notepad)
   function renderPageView(pageId) {
     const page = store.getPage(pageId);
     if (!page) return;
@@ -106,6 +122,7 @@
 
     if (page.type === 'database') {
       currentEditor = null;
+      currentNotepadView = null;
       currentDbView = new DatabaseView(viewContainer, {
         store,
         pageId,
@@ -114,9 +131,24 @@
     } else if (page.type === 'folder') {
       currentEditor = null;
       currentDbView = null;
+      currentNotepadView = null;
       renderFolderView(viewContainer, pageId);
+    } else if (page.type === 'notepad' || activeEditorModes[pageId] === 'notepad') {
+      currentEditor = null;
+      currentDbView = null;
+      currentNotepadView = new NotepadView(viewContainer, {
+        store,
+        pageId,
+        onUpdate: () => shell.updateSidebar(),
+        onModeSwitch: (mode) => {
+          activeEditorModes[pageId] = mode;
+          renderPageView(pageId);
+          shell.updateHeader();
+        }
+      });
     } else {
       currentDbView = null;
+      currentNotepadView = null;
       currentEditor = new BlockEditor(viewContainer, {
         store,
         pageId,
@@ -130,15 +162,16 @@
     const page = store.getPage(pageId);
     if (!page) return;
     const contents = store.getFolderContents(pageId);
+    const esc = (s) => (window.escapeHTML ? window.escapeHTML(s) : (s || ''));
 
     const folderWrap = document.createElement('div');
     folderWrap.className = 'af-folder-workspace';
 
     folderWrap.innerHTML = `
       <div class="folder-header-hero">
-        <div class="folder-big-icon">${page.icon || '📁'}</div>
+        <div class="folder-big-icon">${esc(page.icon || '📁')}</div>
         <div class="folder-header-info">
-          <h1 class="folder-title" contenteditable="true" spellcheck="false">${page.title || 'Untitled Folder'}</h1>
+          <h1 class="folder-title" contenteditable="true" spellcheck="false">${esc(page.title || 'Untitled Folder')}</h1>
           <div class="folder-meta-row">
             <span class="folder-pill">📁 FOLDER</span>
             <span class="folder-count">${contents.length} ${contents.length === 1 ? 'item' : 'items'}</span>
@@ -149,6 +182,7 @@
 
       <div class="folder-actions-row">
         <button class="btn-folder-action" id="btn-fld-new-doc">+ 📄 Document</button>
+        <button class="btn-folder-action" id="btn-fld-new-np">+ 📝 Notepad</button>
         <button class="btn-folder-action" id="btn-fld-new-db">+ 📊 Database</button>
         <button class="btn-folder-action" id="btn-fld-new-sub">+ 📁 Subfolder</button>
         <button class="btn-folder-action" id="btn-fld-upload">+ 📎 Upload File</button>
@@ -160,15 +194,15 @@
           <div class="folder-empty-state">
             <div class="empty-folder-art">📂</div>
             <h3>This folder is currently empty</h3>
-            <p>Create documents, databases, subfolders, or upload any file format into this folder.</p>
+            <p>Create documents, plain text notes, databases, subfolders, or upload any file format into this folder.</p>
           </div>
         ` : contents.map(child => `
           <div class="folder-item-card" data-id="${child.id}">
             <div class="folder-item-top">
-              <span class="folder-item-icon">${child.icon || (child.type === 'folder' ? '📁' : (child.type === 'database' ? '📊' : '📄'))}</span>
-              <span class="folder-item-badge ${child.type}">${child.type.toUpperCase()}</span>
+              <span class="folder-item-icon">${esc(child.icon || (child.type === 'folder' ? '📁' : (child.type === 'database' ? '📊' : (child.type === 'notepad' ? '📝' : '📄'))))}</span>
+              <span class="folder-item-badge ${child.type}">${esc(child.type.toUpperCase())}</span>
             </div>
-            <div class="folder-item-title">${child.title || 'Untitled'}</div>
+            <div class="folder-item-title">${esc(child.title || 'Untitled')}</div>
             <div class="folder-item-bottom">
               <span class="folder-item-date">${new Date(child.updatedAt).toLocaleDateString()}</span>
               <button class="btn-del-folder-item" data-id="${child.id}" title="Move to Trash">✕</button>
@@ -196,6 +230,11 @@
 
     folderWrap.querySelector('#btn-fld-new-doc').onclick = () => {
       const p = store.createPage({ spaceId: page.spaceId, parentId: pageId, title: 'Untitled Document', type: 'document' });
+      renderPageView(p.id);
+    };
+
+    folderWrap.querySelector('#btn-fld-new-np').onclick = () => {
+      const p = store.createPage({ spaceId: page.spaceId, parentId: pageId, title: 'Untitled Note', type: 'notepad', icon: '📝' });
       renderPageView(p.id);
     };
 
