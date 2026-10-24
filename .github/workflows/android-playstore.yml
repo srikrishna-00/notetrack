@@ -7,6 +7,7 @@ on:
 
 jobs:
   build-android:
+    name: Build Signed Android App Bundle & APK
     runs-on: ubuntu-latest
 
     steps:
@@ -26,19 +27,53 @@ jobs:
           java-version: '21'
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        run: npm install
 
       - name: Sync Capacitor Android
         run: npx cap sync android
 
-      - name: Build Android App Bundle (AAB)
+      - name: Setup Release Keystore & Properties
+        run: |
+          if [ ! -f "android/notetrack-upload.jks" ]; then
+            echo "Generating production release keystore..."
+            keytool -genkey -v -keystore android/notetrack-upload.jks \
+              -alias notetrack \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass notetrackpass \
+              -keypass notetrackpass \
+              -dname "CN=NoteTrack, OU=Mobile, O=NoteTrack, L=SanFrancisco, S=CA, C=US"
+          fi
+          cat <<EOF > android/keystore.properties
+          storeFile=notetrack-upload.jks
+          storePassword=notetrackpass
+          keyAlias=notetrack
+          keyPassword=notetrackpass
+          EOF
+
+      - name: Build Android App Bundle (.aab) & Release APK (.apk)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease assembleRelease
 
-      - name: Upload Android App Bundle Artifact
+      - name: Upload Android App Bundle (for Google Play Store)
         uses: actions/upload-artifact@v4
         with:
-          name: notetrack-release-aab
+          name: notetrack-google-play-bundle
           path: android/app/build/outputs/bundle/release/*.aab
+
+      - name: Upload Direct Install APK (for Phone Testing)
+        uses: actions/upload-artifact@v4
+        with:
+          name: notetrack-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+
+      - name: Upload Release Keystore (Backup for future app updates)
+        uses: actions/upload-artifact@v4
+        with:
+          name: notetrack-upload-keystore
+          path: |
+            android/notetrack-upload.jks
+            android/keystore.properties
